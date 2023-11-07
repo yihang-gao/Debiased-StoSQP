@@ -276,11 +276,11 @@ Constraints are also frequently employed in adversarial training scenarios.
 \michael{Cite one of Ben's papers and one main paper from the GAN area that uses constraints; ask Ben what would be best.}
 For example, in the training of Wasserstein generative adversarial networks, constraints on the norm of the network parameters are often imposed to ensure model effectiveness \cite{arjovsky2017wasserstein}. Various types of constraints have been found to improve the adversarial robustness of the model and reduce its sensitivity to perturbations in the input data \cite{cisse2017parseval}. In the context of adversarial attacks, constraints are formulated to ensure that the search space of adversarial examples remains close to the original data samples \cite{goodfellow2014explaining, su2019one, zhu2023adversarial}.
 
-\textcolor{blue}{
+
 \subsubsection{Constrained neural networks}
 With advances in computational power and storage, as well as the increasing complexity of problems to solve, the size of neural networks, in terms of the number of parameters, can range from millions to billions. This scale is often much larger than the size of available training samples. In such situations, constraints play a crucial role in mitigating overfitting by limiting the flexibility of the network space.
 One simple yet effective way to improve a neural network's generalization capability is to apply $L_2$-norm constraints (regularization) on the network parameters. The well-known implementation tricks including batch normalization and layer normalization are practical tools to regularize neural network parameters to avoid gradient vanishing or explosion and accelerate convergence. Additionally, the significance of parameter constraints for neural networks is also pointed out in generalization analysis \cite{neyshabur2017exploring}.
-}
+
 
 \subsection{Our contributions}
 We introduce a relaxed stochastic SQP with averaged gradients for solving the constrained optimization problem (\ref{original_problem0}). 
@@ -715,7 +715,7 @@ Our principal focus here is on the intriguing behavior associated with the accep
 \section{The Stochastic SQP Algorithm}
 \label{sec:relaxed_stochSQP}
 
-\textcolor{blue}{In this section, we developed a stochastic optimization algorithm with almost sure convergence guarantees for solving (\ref{original_problem0}).  To accomplish this,} 
+\textcolor{blue}{In this section, we developed a stochastic optimization algorithm (AvgStoSQP) with almost sure convergence guarantees for solving (\ref{original_problem0}).  To accomplish this,} 
 we first modify the deterministic SQP algorithm (presented in Algorithm \ref{alg_det_relaxed_sqp}) into a fully stochastic algorithm (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}), where the averaging gradient is used to reduce the biasedness introduced by the uncertainty in the SQP subproblem. 
 \michael{Start off every section that way, saying what are the major results of that section and how they fit into the overall story.}
 Initially, we establish the global almost sure "$\lim \inf$" convergence for the iterates. 
