@@ -78,23 +78,14 @@
 \begin{abstract}
 We perform statistical inference for the solution of stochastic optimization problems with equality and box constraints. 
 The constrained optimization problems we considered appear widely throughout statistics and machine learning, including constrained M-estimation, PDE-constrained problems, and algorithmic fairness. 
-We propose a stochastic sequential quadratic programming algorithm with averaged gradients for debiasing (namely, Debiased-StoSQP and Debiased-StoSQP-v2), where we decide the search direction by performing a quadratic expansion of the objective with a linearization of the constraints.
-\michael{I added a dash, so that the name does not have a space.  Would you make sure we have that consistently everywhere, in the figures as well.}
-\yihang{fixed.}
+We propose a stochastic sequential quadratic programming algorithm with averaged gradients for debiasing (namely, Debiased-StoSQP and its refinement Debiased-StoSQP-v2), where we decide the search direction by performing a quadratic expansion of the objective with a linearization of the constraints.
 Even though we can access an unbiased estimate of the stochastic gradients, a key challenge for constrained stochastic optimization is finding a (biased) search direction. 
-\michael{Is that reworded sentence still correct.}
-\yihang{yes, thank you.}
 To address this challenge, we introduce an averaging gradients method to mitigate the biasedness (debiasing). 
 Debiased-StoSQP achieves global almost sure convergence in terms of first-order optimality conditions (i.e., KKT conditions), and its refinement Debiased-StoSQP-v2 exhibits local asymptotic normality, where the limiting covariance matrix represented by the Fisher information matrix is optimal in the H\'ajek and Le Cam's sense. 
 Additionally, a plug-in estimator of the covariance matrix is provided for practical statistical analysis. 
 Through extensive experiments on benchmark problems in the CUTEst library, constrained linear and logistic regression problems, portfolio allocation problems, and constrained generalized linear models (e.g., Poisson regression), with both synthetic and real data, we demonstrate the performance of Debiased-StoSQP-v2.
 \end{abstract}
 
-%\begin{keyword}[class=MSC]
-%\kwd[Primary ]{???}
-%\kwd{???}
-%\kwd[; secondary ]{???}
-%\end{keyword}
 
 \begin{keyword}
 \kwd{Local asymptotic minimax optimality}
@@ -122,7 +113,6 @@ Here, the vectors $\bm{\ell}$ and $\bm{u}$ denote the lower and upper bounds, re
 Throughout this paper, we assume that $f$, $\bm{c}$, and $F(\cdot; \zeta)$ for each realization $\zeta$ are twice continuously differentiable. We aim to develop a \textit{fully online}, \textit{practical}, and \textit{optimal} method to solve Problem~\eqref{original_problem0}.
 
 
-%% REDUNDANT WITH NEXT PAR %% Such constrained stochastic optimization problems have wide applications in statistics, machine learning, and optimization. 
 Constraints are useful tools for integrating prior models information, ensuring models' identifiability, and reducing dimensionality. 
 We will provide concrete motivating examples in Section \ref{sec:1.1}. 
 Given the ubiquity of Problem~\eqref{original_problem0}, it is of particular interest to estimate its (local) solution $\tx$ with $n$ samples. Arguably, the most primitive estimator is the classical $M$-estimator, where we generate samples $\zeta_1,\ldots,\zeta_n\stackrel{\text{iid}}{\sim} \P$ and solve the constrained problem by replacing the population loss $f$ with the empirical loss $\hf_n$:
@@ -132,7 +122,7 @@ Given the ubiquity of Problem~\eqref{original_problem0}, it is of particular int
 		\text{s.t.} \hspace{1em} & \bm{c}(\bm{x}) = \bm{0},\quad \bm{\ell} \leq \bm{x} \leq \bm{u}.
 	\end{split}
 \end{equation*}
-In fact, the above constrained $M$-estimator is optimal in  H\'ajek and Le Cam's sense.
+In fact, the above constrained $M$-estimator is optimal in  H\'ajek and Le Cam's sense \cite{le2000asymptotics, van2000asymptotic}.
 That is, the asymptotic consistency and normality of the minimizer $\hat{\bm{x}}_{n}$ is given by 
 \begin{equation}
 \label{M-estimator}
@@ -141,36 +131,30 @@ That is, the asymptotic consistency and normality of the minimizer $\hat{\bm{x}}
 where $\bm{L} = \bm{P}_{J} \nabla^2 \mathcal{L}(\bm{x}^{*},\bm{\lambda}^{*},\bm{\mu}^{*})\bm{P}_{J}$, $\bm{P}_{J} = \bm{I} - \bm{J}^{\top}\left( \bm{J}\bm{J}^{\top}\right)^{\dag}\bm{J}$ is the projection matrix, $\bm{J}$ is the Jacobian matrix of active constraints at $\bm{x}^{*}$, and $\mathcal{L}(\bm{x}^{*},\bm{\lambda}^{*},\bm{\mu}^{*})$ is the Lagrangian function at the optimal primal-dual points. 
 
 
-% for two vectors means that all corresponding elements hold the relation, and $\zeta$ is a random variable following a probability distribution $\Pi$. The noise in $\zeta$, which may arise from statistical approximations, mini-batch sampling, or unclean data, renders the problem stochasticity. 
+
 In this era of large-scale data, optimization problems such as Problem~\eqref{original_problem0} have wide-ranging applications, including but not limited to signal processing, neural network learning, PDE-constrained optimization, and (often randomized) numerical linear algebra.
-% where the symbol '$\leq$' for two vectors means that all corresponding elements hold the relation, $\zeta$ denotes a random variable following a probability distribution $\Pi$, $f(\bm{x};\zeta)$ is the objective function, $\bm{c}_{\mathcal{E}}(\bm{x}) = \bm{0}$ and $\bm{c}_{\mathcal{I}}(\bm{x}) \leq \bm{0}$ are the nonlinear equality and inequality constraints, and $ \bm{\ell} \leq \bm{x} \leq \bm{u}$ is the box constraint. Here, the noise $\zeta \sim \Pi$ may come from the statistical approximation, the mini-batch sampling, and the collected unclean data. In the big data era, the problem (\ref{original_problem}) is widely used and investigated, in signal processing, deep learning, PDE-constrained optimization, and numerical linear algebra, etc. 
 By introducing auxiliary variables (also called slack variables), general equality- and inequality-constrained problems can be transformed into the form of Problem~\eqref{original_problem0}.
 Given this equivalency, the focus of this paper is on developing stochastic optimization algorithms to solve Problem~\eqref{original_problem0}.
 
 
 
 Stochastic optimization algorithms for optimizing an objective $f(\bm{x})$ have a rich history and can be traced back (at least) to stochastic gradient descent (SGD), which solves Problem \eqref{original_problem0} in an unconstrained setting. 
-\michael{Would you go through and use ref, eqref, etc. consistently. We have used it both ways by now.  Also, be consistent about Problem~\eqref{original_problem0}, since that helps orient the reader.}
-\yihang{fixed.}
 While SGD is computationally and storage-efficient, subsequent research has developed and enhanced its global convergence and local asymptotic properties.
-% SGD has a lot of advantages over algorithms proposed later, especially in computation and storage. The global and local asymptotic analysis of SGD are well developed, where it achieves the optimal convergence rate \cite{rakhlin2012making}. 
 For instance, Ruppert \cite{ruppert1988efficient}, Polyak and Juditsky\cite{polyak1992acceleration} introduced the concept of Polyak-Ruppert averaging, achieving asymptotic normality for averaged iterates.
 Chen et al. \cite{chen2020statistical} proposed the plug-in estimator and developed a more efficient batch-means estimator to approximate the covariance matrix and estimate the corresponding confidence intervals. 
 Anastasiou et al. \cite{anastasiou2019normal} developed non-asymptotic convergence rates for normal approximation of SGD with Polyak-Ruppert averaging. 
 Leluc and Potier \cite{leluc2020asymptotic} extend the analysis to conditioned SGD, thereby encompassing a broader class of algorithms like Newton's methods and Quasi-Newton's methods.
-% In the optimization literature, Newton's methods have a superiority compared with first-order methods (i.e., gradient descent and its variants), in terms of convergence rate, with the help of Hessian information. Local superlinear convergence can be achieved for Newton's methods in solving deterministic problems under some conditions \cite{jorge2006numerical, na2022hessian, yue2019quadratic}, while gradient-descent-based methods only have linear convergence. 
+
 
 
 Newton's methods are often favored over first-order methods like gradient descent, particularly for their faster convergence rates, which are made possible by incorporating (exact or approximate) Hessian information \cite{jorge2006numerical, na2022hessian, yue2019quadratic}.
 Beyond theoretical advantages, Newton's methods, in particular randomized versions \cite{fred_SSN_JRNL,XRM17_theory_TR,XRM17_empirical_TR,YXRM18_TR}, have exceptional performance in practical applications. 
 For example, Yao et al. \cite{yao2021adahessian} introduced AdaHessian, employng an adaptive Newton's methods to speed up deep neural network training; and 
 Liu et al. \cite{liu2023sophia} then used ideas very similar to AdaHessian to develop Sophia, which reduced the computational cost for training large language models. 
-% Although some works further improved the ``optimal'' convergence rate of gradient descent-based algorithms, to the best of our knowledge, they tried to partially extract Hessian information, e.g., estimating the negative curvature \cite{carmon2017convex, carmon2018accelerated} and regularization for the strict positive-definiteness \cite{allen2018make}.
 Although efforts have been made to enhance gradient descent-based algorithms by partially extracting Hessian information \cite{carmon2017convex, carmon2018accelerated, allen2018make}, the unique benefits of Newton's methods continue to make them a focal point of ongoing research.
 
 
 Sequential Quadratic Programming (SQP) is recognized as a potent method for tackling constrained optimization problems, particularly when dealing with nonlinear constraints. As Nocedal and Wright emphasized in their seminal work \cite{jorge2006numerical}, SQP stands as one of the most effective techniques for solving such problems in the deterministic setting.
-% Deterministic SQP algorithms are well-developed and investigated \cite{boggs1995sequential, jorge2006numerical}, where the objective $f(\bm{x})$ in (\ref{original_problem}) is fully accessible. Compared with most existing works of SQP, we consider the stochastic objective and deterministic constraints in the problem (\ref{original_problem0}), whose exact objective values, gradient, and Hessian matrices are inaccessible. 
 In contrast to deterministic SQP methods, which assume full access to the objective $f(\bm{x})$ as described in \cite{boggs1995sequential, jorge2006numerical}, our work considers a stochastic objective alongside deterministic constraints, as formulated in Problem \eqref{original_problem0}.
 This paradigm introduces challenges, as the exact values of the objective function, its gradients, and Hessian matrices are generally inaccessible.
 While recent research has extended SQP algorithms to stochastic settings \cite{na2022asymptotic, na2023inequality, fang2022fully, na2023adaptive, curtis2023worst, curtis2023sequential, curtis2021inexact, berahas2021stochastic, duchi2021asymptotic}, these works have focused predominantly on problems with only equality constraints. 
@@ -178,56 +162,41 @@ A more exhaustive literature review will be provided in Section \ref{intro:relat
 
 
 Asymptotic analysis serves as a critical tool for a nuanced understanding of the local behavior of iterates in stochastic algorithms. In the context of constrained optimization, we define the primal-dual solution $(\bm{x}^{*}, \bm{\lambda}^{*}, \bm{\mu}_1^{*}, \bm{\mu}_2^{*})$, especially the primal solution $\bm{x}^{*}$, as the optimal solution of the Problem \eqref{original_problem0} with expected objective. 
-%%\michael{What is that sentence saying.}
-%%\yihang{Here, in this paragraph, we briefly introduce our result that $\{(\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*})\}$ asymptotically follows normal distribution. This sentence defines the notation  $(\bm{x}^{*}, \bm{\lambda}^{*}, \bm{\mu}_1^{*}, \bm{\mu}_2^{*})$ as the optimal solution of constrained problems.}
 The dual variable $(\bm{\lambda}^{*}, \bm{\mu}_1^{*}, \bm{\mu}_2^{*})$ corresponds to the equality constraints $\bm{c}(\bm{x}) = \bm{0}$, the lower-bound box constraints $\bm{\ell} - \bm{x} \leq \bm{0}$, and the upper-bound box constraints  $\bm{x} - \bm{u} \leq \bm{0}$, respectively. 
-% The global convergence results usually do not exactly show the convergence behavior of the iterated generated by algorithms, with the noisy observation of the objective $f(\bm{x})$, gradients, and Hessian matrices, etc. 
 While global convergence results offer a broad understanding of the algorithm's behavior, they often fall short in revealing detailed convergence characteristics, especially in the presence of noisy observations related to the objective \(f(\bm{x})\), gradients, and Hessians.
 Consider $\{(\bm{x}_k, \bm{\lambda}_{k}, \bm{\mu}_{1,k}, \bm{\mu}_{2,k})\}$ as the sequence of primal-dual iterates generated by an algorithm for solving Problem \eqref{original_problem0}. The statistical inference drawn from $\{(\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*})\}$ 
 can provide more granular insights.
-% is more informative where we develop the local asymptotic distributions and estimate the corresponding statistical properties, e.g., covariance matrices and confidence intervals. 
 Based on this, we can develop the local asymptotic distributions and estimate associated statistical properties, such as covariance matrices and confidence intervals. 
-\michael{What does ``Specifically'' mean there?  ``Based on this''?}
-\yihang{yes, this sentence explain what insights the statistical inference provides.}
 The stochastic nature of the iterates is reflected by the asymptotic distribution (especially the confidence interval), provided that the number of iterations is sufficiently large. 
-\michael{What does ``Therefore'' mean there? I don't see the logical connection.}
-\yihang{yes, we may remove ``therefore''.}
 Such statistical insights offer a quantified measure of confidence and a mechanism to manage uncertainty (and thus inference) in stochastic optimization. 
 
 Given these considerations, a natural question is: 
 \begin{itemize}
-\item \textit{Can we develop an (asymptotically) optimal algorithm, in H\'ajek and Le Cam's sense, and in a manner analogous to the classical M-estimator, for the constrained stochastic optimization Problem \eqref{original_problem0}?}
-\michael{I reworded.  Is that okay?} \yihang{yes.}
+\item \textit{Can we develop an (asymptotically) optimal algorithm, in H\'ajek and Le Cam's sense \cite{le2000asymptotics, van2000asymptotic}, and in a manner analogous to the classical M-estimator, for the constrained stochastic optimization Problem \eqref{original_problem0}?}
 \end{itemize}
-% Our answer is yes. In this paper, we designed a fully stochastic Newton's method, which is asymptotically optimal, for solving \eqref{original_problem0}.
+
 
 \noindent 
 In this paper, we answer this question in the affirmative. 
 To accomplish this, we introduce a novel stochastic Sequential Quadratic Programming algorithm (Debiased-StoSQP and its refinement version Debiased-StoSQP-v2)
 to solve Problem \eqref{original_problem0}, with global almost sure convergence guarantees.
-% , and conduct the statistical inference for the generated iterates, where the asymptotic normality, almost sure convergence, and practical estimators for covariance matrices are developed.
-We also develop asymptotic normality results, almost sure convergence rates, and practical estimators for covariance matrices of the generated iterates. The derived limiting covariance matrix matches that of the M-estimator, showing that our algorithm Debiased-StoSQP-v2 is asymptotically optimal. 
+We also develop asymptotic normality results and practical estimators for covariance matrices of the generated iterates. The derived limiting covariance matrix matches that of the M-estimator, as in Equation \eqref{M-estimator}, showing that our algorithm Debiased-StoSQP-v2 is asymptotically optimal. 
 
 Unlike previous analyses of SGD algorithms that focus on averaged iterates~\cite{polyak1992acceleration, chen2020statistical}, our statistical inference targets the last iterate, rendering our approach more aligned with practical applications.
-% Different from the statistical analysis of SGD for averaged iterates as in \cite{polyak1992acceleration, chen2020statistical}, our results are for the last iterates rather than the averaging, which is more compatible with real applications. 
-% The existence of inequality constraints in (\ref{original_problem0}) breaks the unbiasedness of the solution of the quadratic subproblem, even though $f(\bm{x};\zeta)$ (resp. $\nabla f(\bm{x};\zeta)$) is an unbiased estimate of $f(\bm{x})$ (resp. $\nabla f(\bm{x})$), making the problem more challenging than the purely equality-constrained problems \cite{na2022asymptotic}. 
-% We adopted the moving averaging techniques for the gradient estimation to reduce the bias caused by the inequality constraints. Our results are optimal based on the min-max lower bound on the covariance matrix  \cite{duchi2021asymptotic}.
-Importantly, the presence of inequality constraints in Problem~\eqref{original_problem0} introduces a bias in the solutions of the quadratic subproblems for direction estimates. 
-This happens even when $f(\bm{x}; \zeta)$ and $\nabla f(\bm{x}; \zeta)$ are unbiased estimators of $f(\bm{x})$ and $\nabla f(\bm{x})$, respectively.
+Importantly, the presence of inequality constraints in Problem~\eqref{original_problem0} introduces a bias in the solutions of the quadratic subproblems for direction estimates, i.e., the obtained search direction is biased. 
+This happens even when $\nabla f(\bm{x}; \zeta)$ is an unbiased estimators of $\nabla f(\bm{x})$.
 This makes our problem formulation more challenging, compared to problems with only equality constraints~\cite{berahas2021sequential, na2022asymptotic}. 
 To mitigate the bias, we employ moving averaging techniques for gradient estimation. 
-Our results on the asymptotic normality of iterates establish optimality in terms of the min-max lower bound on the covariance matrix in H\'ajek and Le Cam's sense~\cite{duchi2021asymptotic}.
+Our results on the asymptotic normality of iterates establish optimality in terms of the min-max lower bound on the covariance matrix in H\'ajek and Le Cam's sense~\cite{le2000asymptotics, van2000asymptotic}.
 
 
 
 \subsection{Motivating examples}
 \label{sec:1.1}
 We now present specific examples from machine learning and statistics that can be cast into the forms of Problem \eqref{original_problem0}. We re-emphasize that the general constrained problem can be converted into the form of Problem \eqref{original_problem0} by introducing auxiliary variables, where both forms share the same KKT points (where the first-order optimality condition holds). 
-%%\michael{Do we have two motivating examples below, or more?  Each subsubsection seems to have a few? I think that if we can have 3 or 4 that would be more compelling that this constrained problem arises a lot.}
 
 \subsubsection{Constrained regression}
 \label{sec_constrained_regression}
-% In the realm of regression models, partially due to the correlation of attributes, unreliable inference results that violate intuition and facts may occur without adopting preprocessing techniques, e.g., model selection and correlation reduction. 
 In regression models, issues like multicollinearity can lead to unreliable inference results that conflict with both intuition and empirical evidence. 
 One way to mitigate such issues is by incorporating prior information into the model via constraints on the model parameters.
 For instance, we observed such complexities while working with Poisson regression models for Chicago air pollution and death rate data; further details are discussed in Section \ref{sec:poisson_regression}.
@@ -247,7 +216,7 @@ In specialized network architectures (like neural ODEs \cite{chen2018neural}, ph
         \text{s.t.} & \hspace{0.5em} \mathcal{C}_{\text{PDE}}(\bm{x}) = \bm{0},
     \end{split}
 \end{equation*}
-where $\bm{x}$ represents the neural network parameters, $\mathcal{L}_{\text{data}}(\bm{x})$ and $\mathcal{C}_{\text{PDE}}(\bm{x}) = \bm{0}$ are the constructed data fitting loss to be minimized and the governing PDEs, respectively. 
+where $\bm{x}$ represents the neural network parameters; $\mathcal{L}_{\text{data}}(\bm{x})$ and $\mathcal{C}_{\text{PDE}}(\bm{x}) = \bm{0}$ are the constructed data fitting loss to be minimized and the governing PDEs, respectively. 
 (It is known that failure to enforce these constraints can lead to serious problems/instabilities in such models \cite{failure21_TR,differentiable_hard_22_TR,learnConservation1_TR}.)
 
 
@@ -265,39 +234,31 @@ Additionally, the importance of parameter constraints for neural networks is see
 
 
 \subsection{Our contributions}
-Our main contribution is to introduce a relaxed stochastic SQP algorithm with averaged gradients for solving the constrained optimization Problem~\eqref{original_problem0}. 
+Our main contribution is to introduce a stochastic SQP algorithm with averaged gradients for solving the constrained optimization Problem~\eqref{original_problem0}. 
 We summarize our primary contributions, described in more detail in Sections \ref{sec:constraint_relaxation}-\ref{sec:asymptotic}, here.
 
 \begin{enumerate}
     \item[\textbf{(a)}] We revisit a standard SQP algorithm (namely, RelaxedSQP, Algorithm \ref{alg_det_relaxed_sqp}), which is applicable to deterministic objectives in the form of Problem~\eqref{original_problem0}, where a relaxation parameter is introduced for the feasibility of the quadratic subproblem. Significantly, we establish a connection between this relaxation scheme and constraint qualifications, providing a deeper understanding of constrained optimization problems.
-\michael{Explicitly point to the algorithm below.} \yihang{fixed.}
     
 
     \item[\textbf{(b)}] Building on the RelaxedSQP, we introduce Debiased-StoSQP (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}), a stochastic counterpart of RelaxedSQP.
     To address bias issues and challenges due to inequality constraints, we employ averaged gradients for debiasing. 
-    We introduce separate step sizes, denoted by  $\alpha_k$ and $\beta_k$, for iterative updates and gradient averaging, respectively; and we prove that the KKT residual of the sequence of iterates  $\{\bm{x}_k\}$, along with least square estimates of dual variables, converges to zero almost surely. \michael{Explicitly point to the algorithm below.} \yihang{fixed.}
+    We introduce separate step sizes, denoted by  $\alpha_k$ and $\beta_k$, for iterative updates and gradient averaging, respectively; and we prove that the KKT residual of the sequence of iterates  $\{\bm{x}_k\}$, along with least square estimates of dual variables, converges to zero almost surely. 
 
     \item[\textbf{(c)}] 
     We perform statistical inference on the iterates generated by Debiased-StoSQP-v2 algorithm (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}), which is a refinement of Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}. 
     To do so, an averaging scheme is introduced for the Hessian, along with an additional update for dual variables. 
-    \michael{Explicitly point to the algorithm below. Also, we should adjust it or the previous algorithms name, to be more explicit.}
-    \yihang{do you think Debiased-StoSQP-v2 ok? ``v2'' means ``version 2''. Yes, the third algorithm is actually a special case of algorithm 2. In algorithm 3, we provide a specific update scheme for Hessian and dual variables.}
     Under mild conditions, we show almost sure convergence of the dual variables $\{(\bm{\lambda}_{k}, \bm{\mu}_{1,k}, \bm{\mu}_{2,k})\}$ to their optimal values $\{(\bm{\lambda}^{*}, \bm{\mu}_{1}^{*}, \bm{\mu}_{2}^{*})\}$.  
-    We establish that asymptotic almost sure convergence is achieved, 
-    $$ \left\| (\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*}) \right\|_2 = o\left( \sqrt{\alpha_k^{\text{min}}} \cdot k^{\varepsilon} \right) ,$$ 
-    for any small $\varepsilon > 0$ almost surely, where $\alpha_k^{\text{min}}$ is the step size for updating the iterates. 
-    We have the asymptotic normality for the iterates, 
+    We establish the asymptotic normality for the iterates, 
     $$ 1/\sqrt{\alpha_k^{\text{min}}}(\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*}) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{\Omega}^{*} \right) ,$$ 
     where $\Theta \bm{\Omega}^{*}$ is the Fisher information matrix of the algorithm (more specifically, the covariance matrix revealing the uncertainty of iterates). 
-    We achieve asymptotically optimal normality in terms of the covariance matrix, according to the min-max lower bound by Duchi and Ruan \cite{duchi2021asymptotic}. 
-    We also provide a practical estimator for the unknown covariance matrix $ \bm{\Omega}^{*}$ and show that 
-    $$ 1/\sqrt{\alpha_k^{\text{min}}} \bm{\Omega}_k^{-1/2}(\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*}) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{I} \right) ,$$ 
-    where $\bm{\Omega}_k$ is the estimation of $\bm{\Omega}^{*}$. 
+    We achieve asymptotically optimal normality in terms of the covariance matrix, according to the min-max lower bound by Duchi and Ruan \cite{duchi2021asymptotic}, in H\'ajek and Le Cam's sense~\cite{le2000asymptotics, van2000asymptotic}. 
+    We also provide a practical estimator for the unknown covariance matrix $ \bm{\Omega}^{*}$ and show that $\bm{\Omega}_k$ is convergent to $\bm{\Omega}^{*}$ almost surely,
+    where $\bm{\Omega}_k$ is the estimation of $\bm{\Omega}^{*}$ (details can be found in Section \ref{sec:asymptotic}). 
     It is a surprising and novel result that the algorithm with averaged gradients can indeed achieve the asymptotic normality.
 \end{enumerate}
 
-\michael{This is a long and detailed paper, so we need to be very explicit/pedantic about pointint to different equations, algorithms, etc., as it helps orient the reader.}
-\yihang{ok. modify the paper.}
+
 
 There are additional details upon which we would like to elaborate. 
 The concept of using a relaxation technique in the SQP subproblem was initially proposed by Powell \cite{powell2006fast}. 
@@ -305,31 +266,23 @@ He provided an intuitive explanation that the constrained problem is difficult/c
 In Section \ref{sec:constraint_relaxation}, we extend this intuition by providing a more rigorous treatment of the relaxation technique, examining it from the perspective of constraint qualification.
 Unlike the approach in \cite{curtis2023sequential}, which relies on increasing sample sizes to reduce bias (a computationally expensive and often impractical process), we use moving averaging techniques. 
 These techniques allow for fully stochastic and online settings, and they achieve convergence with just a single sample of $f(\bm{x};\zeta)$, for gradient and Hessian estimation. 
-% For the proposed relaxed stochastic SQP algorithm, we adopt the moving averaging technique for the gradient estimation since the inequality brings the biasedness of solutions of SQP subproblems, even though $\nabla f(\bm{x};\zeta)$ is an unbiased estimation of $\nabla f(\bm{x})$. Similar challenges are observed in \cite{curtis2023sequential}, where they adopt increasing sample size to reduce the bias. Growing sample sizes during iterations is impractical and computationally expensive, as stochastic algorithms are usually designed for reducing the computation. However, our algorithm is fully stochastic, and one single sample of $f(\bm{x};\zeta)$ is allowed to achieve convergence. 
-% Although Duchi and Ruan \cite{duchi2021asymptotic} used the averaging gradient in strongly convex and constrained problems, their methods are more like the extension of SGD in constrained problems. 
+
 
 A key novelty in our approach is that we introduce two different step sizes with different decay rates for updating the iterates $\bm{x}_k$ and the gradient, respectively.
 This can be regarded as a ``competition'' between the iterates and the gradients. 
 Specifically, for the global almost sure convergence and local asymptotic normality to be achieved, it is essential that the gradients converge faster than the iterates. 
 This ensures that the algorithm is driven by the most current and relevant gradients, contributing to its effective performance.
-% This allows for a more balanced ``competition'' between the two, offering more nuanced control of the trade-off between convergence speed and variance. Intuitively, the averaged gradient should converge faster than the iterates, while an overly large step size leads to high variance.
-% In our algorithm, we include two different step sizes for the iterates $\bm{x}_k$ and the gradient respectively to make them ``competing.'' Intuitively, the averaged gradient should converge faster than the iterates, while an overly large step size leads to high variance. 
-% Curtis et al. \cite{curtis2023sequential} proved the almost sure "$\lim \inf$" convergence for the iterates and did not improve it for the almost sure "$\lim$" convergence, where we guess the most reason is the existence of inequality constraints. 
-Our work develops the almost sure "$\lim$" results that the KKT residual of generated iterates converges to zero almost surely, with the help of the moving average of the gradient and the least squares estimation on dual variables. 
+Our work develops the almost sure "$\lim$" results that the KKT residual of generated iterates converges to zero almost surely, with the help of the averaging gradient technique and the least squares estimation on dual variables. 
 This provides a more complete analysis than existing work \cite{curtis2023sequential}, which only proved the almost sure "$\lim \inf$" convergence.
 We also employ statistical inference techniques to gain insights into the locally asymptotic behavior of Debiased-StoSQP-v2 algorithm. 
 Using recent advancements in martingale difference arrays, our asymptotic analysis is developed to deal with the algorithm with averaging gradients where the gradients are highly correlated. 
-% Finally, under the almost sure convergence assumptions on the primal iterates to the optimal solution, we first show that the inequality-constrained SQP subproblem will be reduced to the equality-constrained problems. We then include an update scheme for dual variables and show that the dual variables also converge to the optimal solution almost surely. Compared with \cite{na2022asymptotic}, the averaging gradient brings more difficulty since the noises of gradients are highly correlated. Fortunately, some recent studies on martingale difference arrays help the asymptotic analysis of our algorithm, because the generated iterates can be regarded as martingale difference arrays, rather than the martingale difference sequence in \cite{na2022asymptotic}. 
 By setting $\alpha_k^{\text{min}} = 1 / (k+1)$, we can achieve the asymptotically optimal normality 
 $$\sqrt{k}  (\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*}) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \bm{\Omega}^{*} \right) ,$$ 
 in terms of the covariance matrix, as shown in \cite{duchi2021asymptotic}. 
-Our estimator  $\bm{\Omega}_k$ for $\bm{\Omega}^{*}$ is more like the plug-in estimator in \cite{chen2020statistical}. 
-We further show that 
-$$ 1/\sqrt{\alpha_k^{\text{min}}} \bm{\Omega}_k^{-1/2}(\bm{x}_k - \bm{\lambda}^{*}, \bm{\lambda}_{k} - \bm{\lambda}^{*}, \bm{\mu}_{1,k} - \bm{\mu}_1^{*}, \bm{\mu}_{2,k} - \bm{\mu}_2^{*}) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{I} \right) .$$ 
+Our estimator  $\bm{\Omega}_k$ for $\bm{\Omega}^{*}$ is more like the plug-in estimator in \cite{chen2020statistical} and we further show that $\bm{\Omega}_k$ is convergent to $\bm{\Omega}^{*}$ almost surely.
+
 
 Note that, unlike SGD, SQP is a constrained Newton's method, where we calculate the noisy Hessian matrix $\nabla^2 f(\bm{x};\zeta)$ in each iteration. Therefore, the plug-in estimator for the covariance matrix does not significantly increase the computational complexity. 
-\michael{What does that sentence mean in the flow of this paragraph?  It seems reduncant with the followins sentences.  Maybe combine several sentences around here?}
-\yihang{revised. thank you.}
 Previous works studying the asymptotic behavior of algorithms typically rely on the independence of gradients, while we consider averaged gradients that are highly correlated.
 The technique we apply involves the use of two distinct step sizes with different rates of decay for iterate and gradient updates. This enables us to balance the convergence behavior of both the iterates and the gradients, thereby achieving asymptotic normality even under conditions of gradient averaging.
 This represents a significant difference from existing methods, and it brings new perspectives into the study of the asymptotic behavior of algorithms. More details can be found in Section \ref{sec:asymptotic}.
@@ -347,16 +300,13 @@ An alternative method is the stochastic line search SQP proposed by Na et al. \c
 Their method is more adaptive and powerful than fully stochastic algorithms, due to the growing batch size. 
 However, the stochastic line search method is usually more computationally expensive, and some safeguarded techniques are required in practice, as the batch size cannot grow arbitrarily. 
 Curtis et al. \cite{curtis2021inexact} aimed to reduce computational overhead by allowing inexact solutions for the quadratic subproblems, subject to specific termination tests. This approach effectively reduces computational effort, especially in high-dimensional scenarios.
-% As the exact solvers for the Newton system (a quadratic problem) are computationally expensive, especially for high dimensional problems, Curtis et al. developed inexact stochastic SQP where the inexact solution of quadratic subproblems must satisfy some termination tests. 
 Similarly, Na and Mahoney \cite{na2022asymptotic} considered the sketch-and-project method in stochastic SQP, a randomized iterative solver introduced in \cite{gower2015randomized}, to approximately solve the Newton system in each iteration and reduce the total computation. 
-Berahas et al. \cite{berahas2023accelerating} also explored variance reduction techniques in gradient approximations, adding robustness to the algorithms at the expense of requiring exact gradient estimations in the outer loops. 
-% utilized predictive variance reduction in gradient approximations, which is more robust than those fully stochastic algorithms. 
+Berahas et al. \cite{berahas2023accelerating} also explored variance reduction techniques in gradient approximations, adding robustness to the algorithms at the expense of requiring exact gradient estimations in the outer loops.  
 However, their method still requires exact estimations of gradients, which may be intractable in some applications. 
 Most of the aforementioned works focus on equality-constrained problems, leaving inequality constraints as an area open for further research.
 
 
 Equality- and inequality-constrained problems pose more formidable challenges than their equality-constrained analogs, particularly due to complications like SQP subproblem infeasibility and solution bias. 
-% As an extension of \cite{na2023adaptive}, Na et al. \cite{na2023inequality} adopted the exact augmented Lagrangian merit function and identifies the active set of constraints in each iteration to solve inequality-constrained problems, where the linearly-independence requirement on Jacobians of active constraints might be strong in some sense. 
 Recent advancements, such as the method of Na et al. \cite{na2023adaptive}, use exact augmented Lagrangian merit functions, concentrating on identifying each iteration's active set of constraints. However, this approach may impose stringent requirements concerning the linear independence of Jacobians for the active constraints.
 Alternatively, Curtis et al. \cite{curtis2023sequential} introduce an innovative two-stage algorithm. 
 The first stage is designed to improve feasibility by solving a box-constrained, strongly convex quadratic problem. 
@@ -369,17 +319,12 @@ Duchi and Ruan \cite{duchi2021asymptotic} have formulated a Riemannian stochasti
 To guarantee the feasibility of the solution iterates, their method incorporates manifold projections, a technique that tends to be computationally demanding.
 
 There exists an extensive body of work focusing on the statistical properties of SGD and its various adaptations \cite{polyak1992acceleration, chen2020statistical}. 
-% We first review some results of SGD. Toulis and Airoldi \cite{toulis2017asymptotic} introduced implicit SGD which achieves the asymptotic normality with the optimal covariance matrix. Mou et al. \cite{mou2020linear} investigated the asymptotic behavior of SGD with fixed step size and Polyak-Ruppert averaging in solving linear systems. 
 We begin by reviewing some seminal contributions to the area of SGD. 
-\michael{Those last two sentences are back and forth, especially given the next sentence. Reword.}
-\yihang{fixed.}
 For instance, Toulis and Airoldi \cite{toulis2017asymptotic} introduced the concept of implicit SGD, which achieves asymptotic normality accompanied by an optimal covariance matrix. Mou et al. \cite{mou2020linear} further contributed by investigating the asymptotic behavior of SGD when fixed step sizes and Polyak-Ruppert averaging are employed in solving linear systems.
-Duchi and Ruan \cite{duchi2021asymptotic} extended this line of research by developing projected Riemannian SGD and offering statistical inferences for inequality-constrained convex problems. \textcolor{blue}{However, the local statistical behavior of stochastic Newton's methods remains relatively unexplored.}
+Duchi and Ruan \cite{duchi2021asymptotic} extended this line of research by developing projected Riemannian SGD and offering statistical inferences for inequality-constrained convex problems. However, the local statistical behavior of stochastic Newton's methods remains relatively unexplored.
 More recently, Boyer and Godichon-Baggioni \cite{boyer2023asymptotic} turned their focus to the asymptotic normality of an advanced stochastic Quasi-Newton method tailored for regression issues.
 Na and Mahoney \cite{na2022asymptotic} provided a particularly interesting insight by showing that the iterates generated by stochastic SQP in equality-constrained problems tend towards an asymptotic Gaussian distribution with a nearly optimal covariance matrix.
-% The near optimality of the covariance matrix comes from the min-max lower bound on the covariance matrices proved by Duchi and Ruan \cite{duchi2021asymptotic}. 
 The basis for this near-optimality is the min-max lower bounds on the covariance matrices, as proven by Duchi and Ruan \cite{duchi2021asymptotic}. 
-% However, the local statistical analysis for stochastic algorithms on equality and inequality-constrained problems is still vacant. Our paper fills the gap in the field. 
 Despite these strides, a significant gap persists in literature concerning local statistical analyses for stochastic algorithms applied to both equality and inequality-constrained problems. 
 Our research bridges this critical lacuna.
 
@@ -388,15 +333,13 @@ Our research bridges this critical lacuna.
 
 Our paper is organized as follows. 
 In Section~\ref{sec:constraint_relaxation}, we revisit the concept of constraint relaxation and establish a link with constraint qualifications. 
-Section~\ref{sec:relaxed_stochSQP} is devoted to the introduction of the proposed relaxed stochastic SQP method (RelaxedStoSQP, Algorithm \ref{alg_det_relaxed_sqp}), 
-\michael{This is an example of a place where we shuld put in an explicit reference to the Algorithm numver and/or name. Ditto in the next sentences, and elsewhere.} \yihang{fixed.}
+Section~\ref{sec:relaxed_stochSQP} is devoted to the introduction of the proposed relaxed stochastic SQP method (Debiased-StoSQP, Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}), 
 where we also derive its global almost-sure convergence properties. 
-In Section~\ref{sec:asymptotic}, we delve into the algorithm's asymptotic behavior, establishing both asymptotic normality and the convergence rate of the iterates generated by our method. 
+In Section~\ref{sec:asymptotic}, we delve into the algorithm's (Debiased-StoSQP-v2, Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}) asymptotic behavior, establishing both asymptotic normality and the convergence rate of the iterates generated by our method. 
 We also introduce a practical estimator designed for statistical inference. 
 Section~\ref{sec:experiments} presents experimental results, focusing on applications to CUTEst benchmark problems and regression analyses. 
 Throughout the paper, we provide sketches of proofs following the theorems to aid in comprehension, but we defer all detailed proofs to the Appendices.
-\michael{We have multiple appendices, no?} \yihang{yes.}
-% We revisit the relaxation of constraints and connect it with a constraints qualification in section \ref{}. In section \ref{}, we introduce the relaxed stochastic SQP and derive the global almost sure convergence. We establish the asymptotic convergence rate and the asymptotic normality for iterates generated by our algorithm in section \ref{}, where we also provide a practical estimator for statistical inference. Experimental results on CUTEst problems and regressions are presented in section \ref{}. We include proof sketches following theorems and defer all detailed proofs to the appendix.  
+
 
 
 \subsection{Notations} 
@@ -412,24 +355,19 @@ In this section, we start by considering the deterministic constrained problem, 
 \label{original_det_problem}
     \begin{split}
         \min_{\bm{x} \in \mathbb{R}^{d}} & \hspace{1em} f(\bm{x}), \\
-        \text{s.t.} & \hspace{1em} \bm{c}(\bm{x}) = \bm{0},\\
-        & \hspace{1em} \bm{\ell} \leq \bm{x} \leq \bm{u},
+        \text{s.t.} & \hspace{1em}  \bm{c}(\bm{x}) = \bm{0}, \quad \hspace{1em} \bm{\ell} \leq \bm{x} \leq \bm{u},
     \end{split}
 \end{equation}
 where $f: \mathbb{R}^{d} \to \mathbb{R}$ is the objective whose derivatives and Hessian are fully accessible under the deterministic setting, and  $\bm{c}: \mathbb{R}^{d} \to \mathbb{R}^{r}$ is the equality constraint. Throughout the paper, we assume that the constraints $\bm{c}$ are second-order continuously differentiable. 
 The vectors $\bm{\ell}$ and $\bm{u}$ define the lower and upper bounds, respectively.
 Here, we require $-\infty < \bm{\ell} < \bm{u} < \infty$ and that the feasible region $\Omega := \{\bm{x}: \bm{c}(\bm{x}) = \bm{0}, \bm{\ell} \leq \bm{x} \leq \bm{u}\}$ is non-empty. 
-At the current iterate $\bm{x}_k$, the classical SQP algorithm 
-\michael{fully general, or general for solving the above problem, or iterates?}
-\yihang{sorry, it should be ``classical SQP algorithm''.}
-obtains the next direction
+At the current iterate $\bm{x}_k$, the classical SQP algorithm obtains the search direction
 by solving the following subproblem:
 \begin{equation}
 \label{original_sqp_subproblem}
     \begin{split}
         \min_{\bm{p} \in \mathbb{R}^{d}} & \hspace{1em}  \nabla f(\bm{x}_k)^{\top}\bm{p}+ \frac{1}{2}\bm{p}^{\top}\bm{B}_k\bm{p},\\
-        \text{s.t.} & \hspace{1em} \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} = \bm{0},\\
-        & \hspace{1em} \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u} .
+        \text{s.t.} & \hspace{1em} \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} = \bm{0},\quad \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u} .
     \end{split}    
 \end{equation}
 This is a quadratic expansion of the objective with a linearization of the constraints.
@@ -446,9 +384,8 @@ We demonstrate this through the following example.
 Consider the following constrained optimization problem
 \begin{equation}
     \begin{split}
-        \min_{(x,y) \in \mathbb{R}^{2}} & \hspace{1em} x + x^2 + y^2,\\
-        \text{s.t.} & \hspace{1em} c(\bm{x}) := x^2 + y^2 -9 =  0,\\
-        & \hspace{1em} \bm{\ell} := \left(\begin{array}{c}
+        \min_{(x,y) \in \mathbb{R}^{2}} & \hspace{1em} x + 2x^2 + 3y^2,\\
+        \text{s.t.} & \hspace{1em} c(\bm{x}) := x^2 + y^2 -9 =  0,\quad   \bm{\ell} := \left(\begin{array}{c}
              0  \\
              0
         \end{array} \right) \leq \left(\begin{array}{c}
@@ -460,7 +397,7 @@ Consider the following constrained optimization problem
         \end{array} \right) := \bm{u}.
     \end{split}
 \end{equation}
-Here, the feasible region $\Omega = \{(x,y): x^2 + y^2 -9 =0, 0 \leq x \leq 3, 0 \leq y \leq 2\}$ is non-empty. If $(x_k,y_k) = (2,1)$, then the feasible region $\Omega_k = \{(\Delta x,\Delta y): -4 + 4\Delta x + 2\Delta y =0, 0 \leq 2+\Delta x \leq 3, 0 \leq 1+\Delta y \leq 2\}$ is non-empty; but the feasible region $\Omega_k$ at $(x_k,y_k) = (1,1)$ (i.e., $\Omega_k = \{(\Delta x,\Delta y): -7 + 2 \Delta x + 2 \Delta y = 0, 0 \leq 1 + \Delta x \leq 3, 0 \leq 1 + \Delta y \leq 2 \}$) is empty. 
+Here, the feasible region $\Omega = \{(x,y): x^2 + y^2 -9 =0, 0 \leq x \leq 3, 0 \leq y \leq 2\}$ is non-empty. If $(x_k,y_k) = (2,1)$, then the region $\Omega_k = \{(\Delta x,\Delta y): -4 + 4\Delta x + 2\Delta y =0, 0 \leq 2+\Delta x \leq 3, 0 \leq 1+\Delta y \leq 2\}$ is non-empty; but the region $\Omega_k$ at $(x_k,y_k) = (1,1)$ (i.e., $\Omega_k = \{(\Delta x,\Delta y): -7 + 2 \Delta x + 2 \Delta y = 0, 0 \leq 1 + \Delta x \leq 3, 0 \leq 1 + \Delta y \leq 2 \}$) is empty. 
 \end{example}
 
 
@@ -492,7 +429,7 @@ The relationship between constraint relaxation and constraint qualifications is 
             \begin{split}
                 & \bm{c}(\Bar{\bm{x}}) + \nabla \bm{c}(\Bar{\bm{x}})^{\top} \bm{z} = \bm{0}, \\
                 & (\bm{z})_i >0,~\text{if}~(\Bar{\bm{x}})_{i} = (\bm{\ell})_i,\\
-                & (\bm{z})_i < 0,~\text{if}~(\Bar{\bm{x}})_{i} = (\bm{u})_i,
+                & (\bm{z})_i < 0,~\text{if}~(\Bar{\bm{x}})_{i} = (\bm{u})_i;
             \end{split}
         \end{equation}
 
@@ -514,8 +451,6 @@ Note that the point $\Bar{\bm{x}}$ does not necessarily satisfy the equality con
 \textbf{Remark.} 
 Here, $\theta_k$ is selected such that it approximates the maximal relaxation parameter to make the relaxed region $\widetilde{\Omega}_k$ feasible. 
 As indicated by Lemma \ref{prop_thetak_to_0}, 
-\michael{Proposition or Lemma? Would you go through everywhere and make sure we don't have such errors anywhere.}
-\yihang{fixed.}
 if the relaxation parameter is not uniformly lower-bounded, a subsequence of $\{\bm{x}_k\}$ will converge to a non-EGMFCQ point. 
 In light of this, we assume that the maximal relaxation parameter remains lower-bounded throughout the iterative process, as in Assumption~\ref{assump1} (below). 
 At the beginning of each iteration, we first examine the relaxation parameter to ensure that it exceeds a predefined threshold. 
@@ -528,18 +463,22 @@ For the iterates $\{\bm{x}_k\}$ generated by the algorithm, there exists $\Tilde
 
 
 \textbf{Remark.} We would like to discuss more the search direction derived from Problem~\eqref{original_sqp_subproblem}.
-\michael{I made that change to Problem~\eqref{original_sqp_subproblem} from (\ref{original_sqp_subproblem}); would you do it everywhere.}
-\yihang{ok, thank you. I modified them accordingly.}
 It is possible to contemplate a more cost-effective algorithm, where the search direction is first obtained from the equality-constrained QP subproblem, followed by applying projections to the box-constrained regions. However, the following example illustrates that this approach can potentially lead to a stagnation at a specific point, despite being under MFCQ/LICQ conditions. 
 \begin{example}
     Consider the following QP problem
     \begin{equation*}
         \begin{split}
             \min_{\bm{p} \in \mathbb{R}^{3}} & \hspace{1em} \bm{g}^{\top} \bm{p} + \frac{1}{2} \bm{p}^{\top} \bm{B} \bm{p},\\
-            \text{s.t.} & \hspace{1em} -1 + \bm{J}^{\top} \bm{p} = 0, \hspace{0.5em} \bm{0} \leq \bm{x} + \bm{p} \leq \bm{2},
+            \text{s.t.} & \hspace{1em} 1 + \bm{J}^{\top} \bm{p} = 0, \hspace{0.5em}  \left(\begin{array}{c}
+             0  \\
+             0
+        \end{array} \right) \leq \bm{x} + \bm{p} \leq  \left(\begin{array}{c}
+             2  \\
+             2
+        \end{array} \right),
         \end{split}
     \end{equation*}
-    where $\bm{g} = (1,-1,0)^{\top}$, $\bm{B} = \bm{I}_3$, $\bm{J} = (1,-1,1)^{\top}$ and $\bm{x} = (1, 1, 0)^{\top}$. If we first solve the equality-constrained problem, the search direction is $\bm{p} = (0,0,-1)^{-1}$, then the projection $P(\bm{x}+\alpha \bm{p}) = \bm{x}$ gets stuck for any $\alpha > 0$.
+    where $\bm{g} = (-1,0)^{\top}$, $\bm{B} = \bm{I}_2$, $\bm{J} = (1,1)^{\top}$ and $\bm{x} = (1, 0)^{\top}$. If we first solve the equality-constrained problem, the search direction is $\bm{p} = (0,-1)^{\top}$, then the projection $P(\bm{x}+\alpha \bm{p}) = \bm{x}$ gets stuck for any $\alpha > 0$.
 \end{example}
 
 
@@ -551,7 +490,6 @@ It is possible to contemplate a more cost-effective algorithm, where the search 
  \begin{algorithmic}[1]
  \renewcommand{\algorithmicrequire}{\textbf{Input:} $\bm{\ell} \leq \bm{x}_0 \leq \bm{u}$, $\tau, \Tilde{\tau} \in (0,1)$, $\sigma \in (0,1)$, $\rho_{-1} >0$, $\epsilon>0$, $\beta \in (0,1)$.}
  \REQUIRE 
- % \\ \textit{Pretraining} :
   \FOR {$k = 0, 1, 2, \cdots$}
   \STATE $\theta_k = 1$;
   \WHILE{$\widetilde{\Omega}_k$ with $\theta_k$ is empty}
@@ -601,12 +539,8 @@ More specifically, throughout the paper, instead of solving Problem~\eqref{origi
 \end{equation} 
 for some $\theta_k \in (0,1]$.
 We assume that Assumption \ref{assump1} consistently holds for iterates generated by  Algorithms \ref{alg_det_relaxed_sqp}-\ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}.
-\michael{Let's not say things like ``proposed algorithms'', let's explicitly point to whatever algorithm we consider.}
-\yihang{ok.}
 
-We next 
-\michael{What does ``In what follows, we'' mean?  ``We next''?}
-offer a concise overview of the line-search technique incorporated into SQP for constrained optimization.
+We next offer a concise overview of the line-search technique incorporated into SQP for constrained optimization.
 To do so, we adopt the $\ell_2$ regularized merit function, defined as
 \begin{equation}
     \phi(\bm{x};\rho):= f(\bm{x}) + \rho \|\bm{c}(\bm{x})\|_2,
@@ -666,17 +600,12 @@ In addition to the feasibility assumption (Assumption \ref{assump1}) on the cons
 
 
 Here, the boundedness assumption for the Lagrangian multipliers guarantees that the penalty parameter $\rho_k$ is upper bounded, as illustrated by existing literature \cite{burke1989robust, bertsekas1997nonlinear}. 
-\michael{What does ``substantiated by existing literature'' mean? Just that they assume it too?} \yihang{yes.}
-% One might be concerned about the boundedness assumption of Lagrangian multipliers for SQP subproblems, even though our iterates are in a bounded domain (i.e., $\bm{\ell} \leq \bm{x} \leq \bm{u}$). Fortunately, the boundedness of Lagrangian multipliers is closely related to the EGMFCQ condition. 
 Potential concerns regarding the boundedness of Lagrange multipliers are addressed by invoking the EGMFCQ condition.  
-\michael{What does ``synthesize'' mean?  That sentence seems like we could just remove it and nothing would be lost. Am I wrong?}
-\yihang{yes, I removed it.}
 This reveals that the Lagrange multipliers for the SQP subproblems are indeed bounded under EGMFCQ condition.
 A detailed exposition of this can be found in Appendix \ref{sec:appendix1.2}, with references \cite{burke1989robust, gauvin1977necessary}.
 
 
 Before delving into the properties of RelaxedSQP (Algorithm \ref{alg_det_relaxed_sqp}), 
-\michael{Point explicitly to which algorithm, by name and/or number, everywhere consistently; otherwise, it can be hard to follow.} \yihang{ok, fixed.}
 it is imperative to articulate the Karush-Kuhn-Tucker (KKT) optimality conditions, as well as the associated KKT residual specific to Problem~\eqref{original_problem0}. 
     The KKT condition and  the corresponding KKT residual for Problem \eqref{original_problem0} at $\bm{x}$ is formalized as
     \begin{equation}
@@ -718,15 +647,11 @@ Capitalizing on the construction of the penalty parameter, we achieve a sufficie
 While unconstrained optimization techniques ensure convergence by achieving a sufficient reduction in the objective function, constrained optimization employs a merit function that amalgamates both the objective function and constraint violations to achieve a similar result. Complete details are provided in Appendix \ref{sec:appendix1.3}.
 
 
-The 
-\michael{I'm confused.  Are we proposing it.  The text above makes it sound like it is standard.}
-\yihang{for the deterministic algorithm, our contribution is including the relaxation in the subproblem. It is just a warm-up and then we move to the stochastic algorithms.}
-RelaxedSQP specializes to the conventional SQP if the unit relaxation parameter (i.e., $\theta_k =1$) is accepted, under the condition that $\bm{x}_k$ is close enough to a feasible and EGMFCQ point. Remarkably, the RelaxedSQP algorithm achieves superlinear local convergence, akin to the classical SQP method, under mild conditions. 
+The RelaxedSQP specializes to the conventional SQP if the unit relaxation parameter (i.e., $\theta_k =1$) is accepted, under the condition that $\bm{x}_k$ is close enough to a feasible and EGMFCQ point. Remarkably, the RelaxedSQP algorithm achieves superlinear local convergence, akin to the classical SQP method, under mild conditions. 
 We do not elaborate on the local superlinear convergence of classical SQP algorithms, which are well-studied and can be found in \cite{jorge2006numerical, ulbrich2004superlinear, boggs1995sequential, liu2011sequential, schittkowski2010sequential}. 
 Our principal focus here is on the intriguing behavior associated with the acceptance of unit relaxation parameters, which is given in the following lemma. 
 The detailed proof is included in Appendix~\ref{sec:appendix1.4}.
-\michael{In all these cases, we say ``proofs''. Why not ``proof'' since it is the proof of a particular result that we have later.}
-\yihang{fixed.}
+
 
 \begin{lemma}
 \label{theorem_local_relaxation_parameter}
@@ -739,27 +664,21 @@ The detailed proof is included in Appendix~\ref{sec:appendix1.4}.
 \label{sec:relaxed_stochSQP}
 
 In this section, we developed a stochastic optimization algorithm with almost sure convergence guarantees (Debiased-StoSQP, Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}) for solving Problem~\eqref{original_problem0}.  
-\michael{Give algorithm number also, if we give it a name here. I'm actually not sure what algorithm that sentence is referring to, the one in this section or the next section.}
-\yihang{fixed.}
 To accomplish this,
 we first modify the deterministic SQP algorithm (presented in Algorithm \ref{alg_det_relaxed_sqp}) into a fully stochastic algorithm (see Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}), where the averaging gradient is used to reduce the biasedness introduced by the uncertainty in the SQP subproblem. 
 Initially, we will establish the global almost sure "$\lim \inf$" convergence for the iterates. 
-Subsequently, we extend these results to achieve the almost sure "$\lim$" convergence by incorporating the least squares estimates of dual variables. Before analyzing the convergence performances of Debiased-StoSQP (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}) 
-\michael{don't say ``proposed'' give an explicit reference} \yihang{fixed.}
-, we describe the algorithm the following steps:
+Subsequently, we extend these results to achieve the almost sure "$\lim$" convergence by incorporating the least squares estimates of dual variables. Before analyzing the convergence performances of Debiased-StoSQP (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}), we describe the algorithm the following steps:
 \begin{itemize}
     \item \textbf{Step 1:} Selection of relaxation parameter. The relaxation parameter is initialized to be $1$ for $k$-th iterate $\bm{x}_k$, i.e., $\theta_k = 1$. 
     The feasibility of the region $\widetilde{\Omega}_k$ with $\theta_k$ is then assessed. The relaxation parameter $\theta_k$ is adjusted iteratively by scaling it down by a factor $\tilde{\tau} \in (0,1)$, i.e., $\theta_k \leftarrow \theta_k \cdot \Tilde{\tau}$, until $\widetilde{\Omega}_k$ is confirmed to be feasible. 
-    Under Assumption \ref{assump1}, a suitable relaxation parameter $\theta_k$ can be found after at most $\lceil \log_{\Tilde{\tau}} \Tilde{\theta} \rceil$ steps. In practice, we include $\Tilde{\theta} \in (0,1]$ as a tolerance in the algorithm for $\theta_k$. There are various ways to verify the feasibility of $\widetilde{\Omega}_k$ with $\theta_k$. A direct and practical way is to solve the following quadratic problem:
+    Under Assumption \ref{assump1}, a suitable relaxation parameter $\theta_k$ can be found after at most $\lceil \log_{\Tilde{\tau}} \Tilde{\theta} \rceil$ steps. In practice, we include $\Tilde{\theta} \in (0,1]$ as a tolerance in the algorithm for $\theta_k$. There are various ways to verify the feasibility of $\widetilde{\Omega}_k$ with $\theta_k$. A direct and practical way is to solve the following convex quadratic problem:
     \begin{equation*}
     \begin{split}
-        \min_{\bm{p}} &  \hspace{1em} \left\| \theta_k \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} \right\|_2^2 + \left\| \bm{p} \right\|_2^2,\\
+        \min_{\bm{p}} &  \hspace{1em} \left\| \theta_k \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} \right\|_2^2,\\
         \text{s.t.} & \hspace{1em} \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u},
     \end{split}
     \end{equation*}
-    and verify that $\bm{p} = \bm{0}$ is the solution. Projected gradient descent and projected Newton's methods are popular and efficient solvers for the box-constrained quadratic problem. If the algorithm terminates with $\theta_k < \Tilde{\theta}$, where the small $\Tilde{\theta} \in (0,1]$ is the tolerance included in 
-\michael{don't say ``our'' give an explicit reference} \yihang{fixed.}
-Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}, then the iterate $\bm{x}_k$ approaches an undesirable point, where EGMFCQ does not hold. 
+    and verify whether the minimal objective is zero. Projected gradient descent and projected Newton's methods are popular and efficient solvers for the box-constrained quadratic problem. If the algorithm terminates with $\theta_k < \Tilde{\theta}$, where the small $\Tilde{\theta} \in (0,1]$ is the tolerance included in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}, then the iterate $\bm{x}_k$ approaches an undesirable point, where EGMFCQ does not hold. 
 
     \item \textbf{Step 2:} Derivative and Hessian estimation. Since the exact derivative and Hessian are inaccessible at $\bm{x}_k$, we obtain an estimated derivative $\bm{g}_k := \nabla f(\bm{x}_k; \zeta_k)$ and approximated Hessian $\bm{B}_k$. Note that $\bm{B}_k$ here is an approximation to the Hessian of the Lagrangian $\mathcal{L}(\bm{x},\bm{\lambda}, \bm{\mu}_1, \bm{\mu}_2) := f(\bm{x}) + \bm{\lambda}^{\top} \bm{c}(\bm{x}) +  \bm{\mu}_1^{\top}\left(\bm{\ell} - \bm{x} \right) + \bm{\mu}_2^{\top}\left(\bm{x} - \bm{u} \right)$ at the primal variable $\bm{x}_k$ and the estimated dual variable $\left(\bm{\lambda}_{k}, \bm{\mu}_{1,k}, \bm{\mu}_{2,k} \right)$. A practical and cheap way to calculate $\bm{B}_k$ follows
     \begin{equation}
@@ -770,34 +689,26 @@ Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}, then the iterate $\bm{x}_k
 In this part for the first-order global convergence, only the positive-definiteness of $\bm{B}_k$ is enforced. Different from \cite{curtis2023sequential}, where the estimated derivative $\bm{g}_k$ is directly used in the SQP subproblem, we apply the averaging technique for reducing the noise, i.e., $\Bar{\bm{g}}_k = \Bar{\bm{g}}_{k-1} + \beta_k (\bm{g}_k - \Bar{\bm{g}}_{k-1})$. 
 The averaging of derivatives is essential to inequality-constrained problems, in both theoretical convergence and experimental performance. 
 It is not difficult to verify that the averaged gradients converge to the exact gradient, at least in expectation, i.e., $ \lim_{k \to \infty} \mathbb{E} \left[ \left\| \Bar{\bm{g}}_k - \nabla f(\bm{x}_k)\right\|_2^2 \right] = 0$, under some mild conditions. However, the simple estimated gradient is not close to the exact gradient, i.e., $\mathbb{E} \left[ \left\|  \bm{g}_k - \nabla f(\bm{x}_k)\right\|_2^2 \right] = \mathcal{O}(1)$.
-\michael{Clarify that sentence. I don't know what ``is distinct with the exact gradient as contrast'' means.}
-\yihang{I mean the averaged gradient is convergent to the exact gradient but the simple estimated gradient is not.}
-\michael{I don't know what ``as contrast'' means.  Also, $\leq \sigma_g^2$ is consistent with being zero, so it could be close.  Do we know that it is not close. Reword.}
-\yihang{although it is ``less then'', the noise level does not go to zero, so we may use $\mathcal{O}(1)$? I mean $\mathbb{E} \left[ \left\|  \bm{g}_k - \nabla f(\bm{x}_k)\right\|_2^2 \right]$ is away from 0.}
-Without the averaging of derivatives, \cite{curtis2023sequential} achieves global convergence by reducing the noise level manually, by increasing the sample size during the iterations. However, our algorithms (Debiased-StoSQP and its variant Debiased-StoSQP-v2) are still fully stochastic, i.e., the derivative estimate is only required to have bounded variance, and the noise level is reduced by the imposed averaging. 
+Without the averaging of derivatives, \cite{curtis2023sequential} achieves global convergence by reducing the noise level manually, i.e., increasing the sample size during the iterations. However, our algorithms (Debiased-StoSQP and its variant Debiased-StoSQP-v2) are still fully stochastic, i.e., the derivative estimate is only required to have bounded variance, and the noise level is reduced by the imposed averaging. 
 
     \item \textbf{Step 3:} Obtaining the direction from SQP subproblem. Equipped with the estimated derivative $\Bar{\bm{g}}_k$, the approximate Hessian $\bm{B}_k$ and the relaxation parameter $\theta_k$, we acquire the search direction $\Bar{\bm{p}}_k$ as a solution of the following SQP subproblem
     \begin{equation}
     \label{relaxed_sqp_subproblem_stoch}
     \begin{split}
         \min_{\bm{p} \in \mathbb{R}^{n}} & \hspace{1em} \Bar{\bm{g}}_k^{\top}\bm{p}+ \frac{1}{2}\bm{p}^{\top}\bm{B}_k\bm{p},\\
-        \text{s.t.} & \hspace{1em} \theta_k \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} = \bm{0},\\
-        & \hspace{1em} \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u}.
+        \text{s.t.} & \hspace{1em} \theta_k \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} = \bm{0},\quad \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u}.
     \end{split}    
 \end{equation} 
 Here, the direction $\Bar{\bm{p}}_k$ is ``descent'' for the merit function, owing to the convergence of  $\Bar{\bm{g}}_k$ to $\nabla f(\bm{x}_k)$ and the positive-definiteness of $\bm{B}_k$. 
     
 
     \item \textbf{Step 4:} Adaptive step size selection. We first require that the pre-defined step size $\{\gamma_k\}$ decays (asymptotically) polynomially, i.e., $\gamma_k = \iota_0 \left(k+1 \right)^{-b_1}$ for some $\iota_0 > 0$ and $b_1 \in (0,1]$. 
-    % Although adopting step size $\{\gamma_k\}$ without adaptive strategy theoretically achieves similar results, we try to experimentally accelerate the convergence by including proper adaptive strategy. 
     The strategy is similar to the adaptive strategy in the deterministic algorithm. We alternatively select $\rho_k$ such that $\Delta q(\bm{x}_k,\Bar{\bm{p}}_k, \Bar{\bm{g}}_k, \bm{B}_k,\rho_k)$ enjoys the sufficient decrease, i.e., $\Delta q(\bm{x}_k,\Bar{\bm{p}}_k, \Bar{\bm{g}}_k, \bm{B}_k,\rho_k) \geq \frac{1}{2} \bm{p}_k^{\top} \bm{B}_k \bm{p}_k + \sigma \rho_k \theta_k \|\bm{c}(\bm{x}_k)\|_2$ for some $\sigma \in (0,1)$. The adaptivity parameter $\xi_k \leq \xi_k^{\text{trial}} := \frac{\Delta q(\bm{x}_k,\Bar{\bm{p}}_k, \Bar{\bm{g}}_k,\bm{B}_k,\rho_k)}{\|\Bar{\bm{p}}_k\|_2^2}$ measures the quality of the direction $\Bar{\bm{p}}_k$ in reducing the merit function. If $\xi_k$ is large, which implies that $\Bar{\bm{p}}_k$ is probably a promising direction, then a more aggressive step size $\alpha_k \propto \xi_k \gamma_k$ is preferred, and vise versa. We select the step size  $\alpha_k \in \left[\alpha_k^{\text{min}}, \alpha_k^{\max} \right] :=  \left[ \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} , \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} + \varrho \gamma_k^2 \right]$, where $\kappa_{\nabla f}$ and $\kappa_{\nabla c}$ are Lipschitz constant for $\nabla f$ and $\nabla \bm{c}$, respectively. We may efficiently estimate the Lipschitz constants by finite differences, an idea quite similar to the Armijo~condition.
 
     \item \textbf{Step 5:} Updating the variable. The primal variable is updated as $\bm{x}_{k+1} = \bm{x}_k + \alpha_k \Bar{\bm{p}_k}$. 
     Notably, the algorithm does not necessitate the explicit use of dual variables for updating the primal variable, thus omitting an update scheme for the dual variables in this section.
     However, the ``optimal'' local convergence requires an accurate approximation of $\bm{B}_k$ to the Hessian of the Lagrangian function. This, in turn, demands a satisfactory estimation of dual variables. 
-    An update scheme for these dual variables, which is crucial for examining the local convergence properties of the iterates, is provided in Equation~\eqref{update_dual} 
-    \michael{when we refer to things, like there, but elsewhere, can we refer to it ans an equation or lemma or problem or subproblem or whatever it is, just to help orient the reader} \yihang{fixed.}
-    in Section \ref{sec:asymptotic}.
+    An update scheme for these dual variables, which is crucial for examining the local convergence properties of the iterates, is provided in Equation~\eqref{update_dual} in Section \ref{sec:asymptotic}.
 \end{itemize}
 
 
@@ -810,7 +721,6 @@ Here, the direction $\Bar{\bm{p}}_k$ is ``descent'' for the merit function, owin
  \begin{algorithmic}[1]
  \renewcommand{\algorithmicrequire}{\textbf{Input:} $\bm{\ell} \leq \bm{x}_0 \leq \bm{u}$, $\tau, \Tilde{\tau} \in (0,1)$, $\sigma \in (0,1)$, $\rho_{-1} >0$, $\epsilon_{\rho}, \epsilon_{\xi}, \beta \in (0,1)$, $\mu \in (0,1)$, $\varrho>0$, $\{\beta_k\}_{k=0}^{\infty}$, $\{\gamma_k\}_{k=0}^{\infty}$.}
  \REQUIRE 
- % \\ \textit{Pretraining} :
   \FOR {$k = 0, 1, 2, \cdots$}
   \STATE \textbf{(Step 1.)} $\theta_k = 1$;
   \WHILE{$\widetilde{\Omega}_k$ with $\theta_k$ is empty}
@@ -863,9 +773,7 @@ In addition, in Assumption \ref{assump8} (below), we impose an additional condit
 
 \begin{assumption}
 \label{assump3}
-    % Suppose that Assumption \ref{assump2} also holds for the stochastic objective $\bm{g}_k = \nabla f(\bm{x}_k;\zeta_{k})$, i.e., $\left\| \bm{g}_k \right\|_2 \leq M_{\nabla f}$, then $\left\|\Bar{\bm{g}}_k \right\|_2 \leq M_{\nabla f}$ with $\left\|\Bar{\bm{g}}_{-1} \right\|_2 \leq M_{\nabla f}$. 
-    Suppose that $\bm{g}_k:= \nabla f(\bm{x}_k;\zeta_k)$ is a unbiased estimate of $\nabla f(\bm{x}_k)$, i.e., $\mathbb{E}_k[\bm{g}_k] = \mathbb{E}_{\zeta}\left[ \nabla f(\bm{x}_k;\zeta)|\bm{x}_k\right] $, and there exists a positive number $\sigma_{g}>0$ such that $\mathbb{E}_{k}\left\|\bm{g}_k - \nabla f(\bm{x}_k)  \right\|_2^2 \leq \sigma_{g}^2$. We further assume that the penalty parameter becomes stable after $\Bar{K}$ iterations, i.e., $\rho_k = \Bar{\rho}$, $\forall k \geq \Bar{K}$. 
-    % Combining with Lemma \ref{lemma18}, without the loss of generality, we assume that both the penalty parameter $\rho_k$ and adaptivity parameter $\xi_k$ becomes stable after $\Bar{K}$ iterations, i.e., $\rho_k = \Bar{\rho}$ and $\xi_k = \Bar{\xi}$, $\forall k \geq \Bar{K}$, for some $ \Bar{\rho}, \Bar{\xi}>0$.
+    Suppose that $\bm{g}_k:= \nabla f(\bm{x}_k;\zeta_k)$ is a unbiased estimate of $\nabla f(\bm{x}_k)$, i.e., $\mathbb{E}_k[\bm{g}_k] = \mathbb{E}_{\zeta}\left[ \nabla f(\bm{x}_k;\zeta)|\mathcal{F}_{k-1}\right] $, and there exists a positive number $\sigma_{g}>0$ such that $\mathbb{E}_{k}\left\|\bm{g}_k - \nabla f(\bm{x}_k)  \right\|_2^2 \leq \sigma_{g}^2$. We further assume that the penalty parameter becomes stable after $\Bar{K}$ iterations, i.e., $\rho_k = \Bar{\rho}$, $\forall k \geq \Bar{K}$. 
 \end{assumption}
 
 
@@ -902,7 +810,7 @@ On top of this result, we also aim to enhance this "$\lim \inf$" convergence to 
 \begin{equation}
 \label{est_opt_lagrangian}
 \begin{split}
-    & \min_{\bm{\lambda}, \bm{\mu}_{1}, \bm{\mu}_{2}} F(\bm{\lambda}, \bm{\mu}_{1}, \bm{\mu}_2; \bm{x}) =  \left\| \nabla f(\bm{x}) + \nabla c(\bm{x})^{\top} \bm{\lambda} - \bm{\mu}_{1} + \bm{\mu}_2 \right\|_2^2 + \left\| \bm{\mu}_{1} \odot \left( \bm{x} - \bm{\ell} \right) \right\|_2^2 + \left\| \bm{\mu}_{2} \odot \left( \bm{x} - \bm{u} \right) \right\|_2^2 \\
+    & \min_{\bm{\lambda}, \bm{\mu}_{1}, \bm{\mu}_{2}} F(\bm{\lambda}, \bm{\mu}_{1}, \bm{\mu}_2; \bm{x}) =  \left\| \nabla f(\bm{x}) + \nabla c(\bm{x})^{\top} \bm{\lambda} - \bm{\mu}_{1} + \bm{\mu}_2 \right\|_2^2 + \left\| \bm{\mu}_{1} \odot \left( \bm{x} - \bm{\ell} \right) \right\|_2^2 + \left\| \bm{\mu}_{2} \odot \left( \bm{x} - \bm{u} \right) \right\|_2^2, \\
     & \text{s.t.}~ \bm{\mu}_{1} \geq \bm{0}, \bm{\mu}_2 \geq \bm{0}.
 \end{split}
 \end{equation}
@@ -919,8 +827,6 @@ The estimated optimal Lagrangian multipliers   $(\bm{\lambda}_{k}^{*}, \bm{\mu}_
 \textbf{Practical step size selection}. In line $10$ of  Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad},
 the step size $\alpha_k$ is chosen from the interval that $\alpha_k \in  \left[ \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} , \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} + \varrho \gamma_k^2 \right]$. 
 By the definition of the adaptivity parameter $\xi_k \leq \xi_{k}^{\text{trial}} =  \frac{\Delta q(\bm{x}_k,\Bar{\bm{p}}_k, \nabla \Bar{f}(\bm{x}_k),\bm{B}_k,\rho_k)}{\|\Bar{\bm{p}}_k\|_2^2}$ and the step size $\alpha_k \geq \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} $, there is a potential risk of underestimation, i.e., $\xi_k \ll  \frac{\Delta q(\bm{x}_k,\Bar{\bm{p}}_k, \nabla \Bar{f}(\bm{x}_k),\bm{B}_k,\rho_k)}{\|\Bar{\bm{p}}_k\|_2^2}$. This occurs especially due to the non-increasing strategy outlined in Equation~\eqref{strategy_xi}
-\michael{Label, is taht a section or equation or what.}
-\yihang{fixed.}
 for the construction of the sequence $\{\xi_k\}$. To address this, we introduce additional flexibility in the upper bound of the step size selection by incorporating $\varrho \gamma_k^2$. Defining a more aggressive trial step size $\alpha_k^{\text{trial}} =  \frac{ \xi_{k}^{\text{trial}}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} $, we project the trail step size into the predefined interval $\left[ \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}}, \frac{ \xi_{k}\gamma_k}{\kappa_{\nabla f} + \rho_k \kappa_{\nabla c}} + \varrho \gamma_k^2 \right]$, resulting in 
 \begin{equation}
     \alpha_k = \left\{ \begin{array}{cc}
@@ -935,11 +841,8 @@ for the construction of the sequence $\{\xi_k\}$. To address this, we introduce 
 
 
 In this section, we further refine Debiased-StoSQP  (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}) to Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}) and show the asymptotic normality property, where Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}) is asymptotically optimal in H\'ajek and Le Cam's sense, as shown in Equation~\eqref{M-estimator}. 
-\michael{Clarify if \ref{M-estimator} is an equation or section or lemma or whatever.}
-\michael{No to the use of ``the proposed algorithm'' and ``the elaborated algorithm'' and so on.} \yihang{fixed.}
 Compared with Debiased-StoSQP (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}), in Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}), we provide detailed update scheme for approximate Hessian matrix $\bm{B}_k$ (as shown in \textbf{Step} $\mathbf{2^{\prime}}$) and dual variables (as shown in \textbf{Step 6}). Note that Debiased-StoSQP-v2 is a special version of Debiased-StoSQP, therefore, they share all properties developed in Section \ref{sec:relaxed_stochSQP}.
-\michael{We should not use the word elaborate, I don't know what it means.  What is our main result?  This algorithm or the algorithm of the previous section?  We should prsent one as a step toward the other, unless wew want to say that both are important.  Then, be clear that, e.g., we improve or refine or whatever the algorithm of the previous seciton to get our main result, or vice versa.  Better than ``elaborated.''}
-\yihang{fixed.}
+
 
 Recall that in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}, the approximate Hessian matrix can be any bounded and positive definite matrices. Here, to show the optimal local convergence of $\{\bm{x}_k\}$ to a local minimizer $\bm{x}^{*}$, the convergence of the approximate Hessian $\bm{B}_k$ to the exact Hessian matrix $\nabla^2 f(\bm{x}^{*}) + \sum_{i=1}^{r} (\bm{\lambda}^{*})_{i} \nabla^2 \bm{c}(\bm{x}^{*})$ is essential. Besides the update scheme for the primal variable $\bm{x}_k$ in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}, we must include extra updates for dual variables which are only useful for the calculating the approximate Hessian matrix $\bm{B}_k$. More specifically, for the current primal-dual variables $\left(\bm{x}_k, \bm{\lambda}_k, \bm{\mu}_{1,k}, \bm{\mu}_{2,k} \right)$, the approximate Hessian matrix $\bm{B}_k$ is estimated~by 
 \begin{equation*}
@@ -947,15 +850,11 @@ Recall that in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}, the approxi
 \end{equation*}
  where $\bm{\Delta}_k$ is a regularization matrix that guarantees the positive-definiteness of $\bm{B}_k$. We also include the averaging for the approximate Hessian to reduce the stochasticity and achieve the almost sure convergence (see Lemma \ref{lemma_almostsure_HB}). 
 We describe it as \textbf{Step} $\mathbf{2^{\prime}}$ in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}, since it is a specific case of Step 2 in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}. 
-%%\michael{That's the first place we mention Algorithm~\ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}.  Let's mention it first, say what it does, then tear it apart.}
-%%\michael{Do we put step numbers in bold consistently everywhere.}
-%%\yihang{We mentioned the Algorithm 3 at the beginning of section 4. It is an elaborated version of Algorithm 2.}
 Let $\left(\Bar{\bm{p}}_k,  \bm{\lambda}_k^{\text{sub}}, \bm{\mu}_{1,k}^{\text{sub}}, \bm{\mu}_{2,k}^{\text{sub}} \right)$ be the primal-dual solution of the SQP subproblem 
  \begin{equation*}
     \begin{split}
         \min_{\bm{p} \in \mathbb{R}^{n}} & \hspace{1em} \Bar{\bm{g}}_{k}^{\top}\bm{p}+ \frac{1}{2}\bm{p}^{\top}\bm{B}_k\bm{p},\\
-        \text{s.t.} & \hspace{1em} \theta_k \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} = \bm{0},\\
-        & \hspace{1em} \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u},
+        \text{s.t.} & \hspace{1em} \theta_k \bm{c}(\bm{x}_k)+\nabla \bm{c}(\bm{x}_k)^{\top}\bm{p} = \bm{0},\quad \bm{\ell} \leq \bm{x}_k + \bm{p} \leq \bm{u},
     \end{split}    
 \end{equation*} 
 where $\Bar{\bm{g}}_{k}$ is the averaged gradient, as in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}. Then the dual variables $\bm{\lambda}_{k+1}, \bm{\mu}_{1,k+1}, \bm{\mu}_{2,k+1}$ are obtained by
@@ -978,18 +877,16 @@ where $\Bar{\bm{g}}_{k}$ is the averaged gradient, as in Algorithm \ref{alg_stoc
 as in \textbf{Step 6} in Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}.
 Note that the regularization matrix $\bm{\Delta}_k$ guarantees that the Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk} is a specific case of Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad}. 
 Consequently, the almost sure convergence results established in Section \ref{sec:relaxed_stochSQP} for Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad} are also applicable to Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}. 
-\michael{Don't refer to former and latter, refer to each explicitly.} \yihang{fixed.}
 The following assumption requires that the LICQ condition, strictly complementary slackness condition, and strongly convexity conditions, namely second-order sufficient conditions (SOSC), are satisfied at the local minimizer. This kind of local condition is commonly considered crucial for analyzing local convergence behaviors, both in unconstrained and constrained optimization problems \cite{jorge2006numerical}.
 
 
 
 \begin{algorithm}[htb]
- \caption{Debiased-StoSQP-v2 \michael{We don't use this name. We should have different names for this and the previous alg and refer to each as such.}}
+ \caption{Debiased-StoSQP-v2}
  \label{alg_stoch_relaxed_sqp_averaging_grad_Bk}
  \begin{algorithmic}[1]
  \renewcommand{\algorithmicrequire}{\textbf{Input:} $\bm{\ell} \leq \bm{x}_0 \leq \bm{u}$, $\tau, \Tilde{\tau} \in (0,1)$, $\sigma \in (0,1)$, $\rho_{-1} >0$, $\epsilon_{\rho}, \epsilon_{\xi}, \beta \in (0,1)$, $\mu \in (0,1)$, $\varrho>0$, $\{\beta_k\}_{k=0}^{\infty}$, $\{\gamma_k\}_{k=0}^{\infty}$.}
  \REQUIRE 
- % \\ \textit{Pretraining} :
   \FOR {$k = 0, 1, 2, \cdots$}
   \STATE \textbf{(Step 1.)} $\theta_k = 1$;
   \WHILE{$\widetilde{\Omega}_k$ with $\theta_k$ is empty}
@@ -1083,8 +980,6 @@ The following assumption requires that the LICQ condition, strictly complementar
 
 We put the detailed proof in Appendix~\ref{sec:appendix3.1}. In Lemma \ref{lemma_almost_eq}, we show that: (1) the exact search direction $\bm{p}_k$ converges almost surely to zero, implying that the iterate $\bm{x}_k$ approximately satisfies KKT conditions; (2) the averaged gradients are arbitrarily close to the exact gradients after a sufficient number of iterations, due to the updating schemes for the averaged gradients and iterates; (3) the active and inactive sets of constraints can be correctly identified; and (4) the primal-dual iterates converge almost surely to the optimal solution.
 By the correct identification of active and inactive sets in Lemma \ref{lemma_almost_eq}, 
-%%\michael{That's a pretty indirect way to say what Lemma \ref{lemma_almost_eq}, which I think is the first place we say it like that.  Let's say what it does when we introduce it, so that when we refer to it like this, it's less indirect.}
-%%\yihang{I included the explanation of Lemma 3 at the beginning of the paragraph.}
 the KKT condition and the strong convexity of the SQP subproblem further imply that $\bm{p}_k$ and $\Bar{\bm{p}}_k$ are the solution of the following equality-constrained problems, respectively:
    \begin{equation}
       \label{eq9}
@@ -1176,7 +1071,7 @@ The proof for Lemma~\ref{lemma_almostsure_HB} can be found in Appendix~\ref{sec:
 \label{assump9}
 Assume that the random gradient has finite third-moment, i.e., the conditioned expectation 
 $$\mathbb{E}\left[ \left\|\bm{g}_k - \nabla f(\bm{x}_k) \right\|_2^3 | \mathcal{F}_{k-1} \right] = \mathbb{E}_{\zeta}\left[ \left\| \nabla f(\bm{x}_k; \zeta)  - \nabla f(\bm{x}_k) \right\|_2^3 | \mathcal{F}_{k-1} \right] \leq M_{m},$$ 
-for some $M_{m}>0$ and all $\bm{x}_k$ in the feasible region $\{\bm{x}: \bm{\ell} \leq \bm{x} \leq \bm{u}\}$. Then the Lipschitzness of stochastic gradient holds, i.e., $\mathbb{E}\left[ \left\| \nabla f(\bm{x};\zeta) - \nabla f(\bm{y};\zeta) \right\|_2^2 \right] \leq \kappa_{\nabla f}^2 \|\bm{x} - \bm{y}\|_2^2$ for some $\kappa_{\nabla f} > 0$.
+for some $M_{m}>0$ and all $\bm{x}_k$ in the feasible region $\{\bm{x}: \bm{\ell} \leq \bm{x} \leq \bm{u}\}$. The Lipschitzness of stochastic gradient holds, i.e., $\mathbb{E}\left[ \left\| \nabla f(\bm{x};\zeta) - \nabla f(\bm{y};\zeta) \right\|_2^2 \right] \leq \kappa_{\nabla f}^2 \|\bm{x} - \bm{y}\|_2^2$ for some $\kappa_{\nabla f} > 0$.
 \end{assumption}
 
 
@@ -1196,16 +1091,6 @@ for some $M_{m}>0$ and all $\bm{x}_k$ in the feasible region $\{\bm{x}: \bm{\ell
     \left[ \bm{\mu}_{2,k+1} - \bm{\mu}_{2}^{*} \right]_{\mathcal{J}(\bm{x}^{*})} 
     \end{array} \right) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{\Omega}^{*} \right),
     \end{equation}
-    and
-    \begin{equation}
-        \left\| \left( \begin{array}{c}
-    \bm{x}_{k+1} - \bm{x}^{*}  \\
-    \bm{\lambda}_{k+1} - \bm{\lambda}^{*} \\
-    \left[ \bm{\mu}_{1,k+1} - \bm{\mu}_{1}^{*}\right]_{\mathcal{I}(\bm{x}^{*})} \\
-    \left[ \bm{\mu}_{2,k+1} - \bm{\mu}_{2}^{*} \right]_{\mathcal{J}(\bm{x}^{*})}
-    \end{array} \right)  \right\|_2 = o\left( \sqrt{\alpha_k^{\text{min}}} \cdot k^{\varepsilon} \right),
-    \end{equation}
-    for any small $\varepsilon > 0$, almost surely,
     and
     \begin{equation}
         \left\| \left( \begin{array}{cc}
@@ -1233,7 +1118,7 @@ into three terms $\mathcal{Q}_{1,k}$, $\mathcal{Q}_{2,k}$ and $\mathcal{Q}_{3,k}
 Using the central limit theorem for martingale difference array, we establish that $\frac{1}{\sqrt{\alpha_k^{\text{min}}}} \mathcal{Q}_{1,k} \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{\Omega}^{*} \right)$. 
 Under the given conditions, we can further show the remaining two terms satisfying $\mathcal{Q}_{2,k} = o\left( \sqrt{\alpha_k^{\text{min}}}\right)$ and $\mathcal{Q}_{3,k} = o\left( \sqrt{\alpha_k^{\text{min}}}\right)$. 
 Then, the result is obtained by Slutsky's theorem. 
-Finally, the almost sure convergence rates are derived by using Corollary 4.7 in~\cite{hao2014convergence}. Detailed proof can be found in Appendix~\ref{sec:appendix3.3}.
+Detailed proof can be found in Appendix~\ref{sec:appendix3.3}.
 
 
 It is a surprising and novel result that the algorithm with averaged gradients can achieve asymptotic normality. 
@@ -1243,10 +1128,7 @@ The key idea here is the introduction of two distinct step sizes, with different
 This can be regarded as a ``competition'' between the iterates and the gradients. 
 Specifically, for asymptotic normality to be achieved, it is essential that the gradients converge faster than the iterates. 
 This ensures that the algorithm is driven by the most current and relevant gradients, contributing to its effective performance.
-%%\michael{That seems like an important point, do we make it in the intro.}
-%%\yihang{Thanks, included in intro part, in page 7.}
 To the best of our knowledge, it is the first work establishing the asymptotic normality for the algorithm with averaged gradients. 
-% It represents a significant step forward in our understanding of the behavior of such algorithms and opens up new insights for future research.
 
     
 
@@ -1261,21 +1143,16 @@ To the best of our knowledge, it is the first work establishing the asymptotic n
     \bm{\lambda}_{k+1} - \bm{\lambda}^{*} \\
     \left[ \bm{\mu}_{1,k+1} - \bm{\mu}_{1}^{*}\right]_{\mathcal{I}(\bm{x}^{*})} \\
     \left[ \bm{\mu}_{2,k+1} - \bm{\mu}_{2}^{*} \right]_{\mathcal{J}(\bm{x}^{*})} 
-    \end{array} \right) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \bm{\Omega}^{*} \right),
+    \end{array} \right) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \bm{\Omega}^{*} \right).
     \end{equation}
-    almost surely. 
 \end{corollary}
 
 
-% Theorem \ref{theorem_minimax_optimality}
-The asymptotic normality for M-estimators in Equation~\eqref{M-estimator}, 
-\michael{be explicit about what that ref is, here and elsew here, incl below} \yihang{fixed.}
-generalized from Duchi and Ruan \cite[Theorem~1]{duchi2021asymptotic}, established a lower bound for stochastic algorithms in solving Problem \eqref{original_problem0}. 
-Our result in Corollary \ref{coro_optimality} complements this by demonstrating that the optimal local convergence behavior of the primal variable is achieved, as characterized by the covariance matrix $\bm{\Omega}^{*}$. Here, considering only the primal variable $\bm{x}_k$, our results in Equation~\eqref{optimal_asymptotic_normality} match Equation~\eqref{M-estimator} by applying knowledge of linear algebra \cite[Corollary~2.3]{tian2009inverse}.
+
+The asymptotic normality for M-estimators in Equation~\eqref{M-estimator} establishes a lower bound for stochastic algorithms in solving Problem \eqref{original_problem0}, in H\'ajek and Le Cam's sense \cite{le2000asymptotics, van2000asymptotic}. 
+Our result in Corollary \ref{coro_optimality} complements this by demonstrating that the optimal local convergence behavior of the primal variable is achieved, as characterized by the covariance matrix $\bm{\Omega}^{*}$. Here, considering only the primal variable $\bm{x}_k$, our results in Equation~\eqref{optimal_asymptotic_normality} match Equation~\eqref{M-estimator} by applying knowledge of block matrix inverse \cite[Corollary~2.3]{tian2009inverse}.
 
 \textbf{A practical estimator of the covariance matrix.}
-\michael{Let's not have one subsection.  Either get rid of this, or split the above into one or two explicit subsections.}
-\yihang{fixed.}
 Here, we provide a practical plug-in estimator for the unknown covariance matrix $\bm{\Omega}^{*}$. 
 We then show that the estimator is convergent to the exact one, and therefore, it can be adopted in analyzing the local behavior of algorithms and conducting statistical inference.
 Let 
@@ -1291,32 +1168,12 @@ where
 \end{equation*}
 Observe that $\bm{\Omega}_k$ can be cheaply calculated in each iteration, without additional sampling/estimation of gradients, since it shares the gradient estimate $\bm{g}_i$ with averaged gradients $\Bar{\bm{g}}_k$.
 The estimator $\bm{\Omega}_k$ for the covariance matrix $\bm{\Omega}^{*}$ can be used as a surrogate to the exact matrix for analyzing the local behavior of algorithms and conducting statistical inference.
-The following theorem establishes the almost sure convergence of the practical estimator to the exact covariance matrix and the asymptotic normality with the plug-in estimator. The proof can be found in Appendix \ref{sec:appendix3.4}.
-\michael{Point to explicit place in the appendix where this is probed, and do it for everything ( I think we miss a few.)}
-\yihang{fixed.}
+The following theorem establishes the almost sure convergence of the practical plug-in estimator to the exact covariance matrix. The proof can be found in Appendix \ref{sec:appendix3.4}.
+
 
 \begin{theorem}
 \label{theorem_pratical_normality}
-    Under Assumptions \ref{assump2}, \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>\frac{2}{3}$ if $b_1=1$, and $\frac{1}{2} b_1 < b_2 \leq \frac{2}{3}b_1$, then 
-    \begin{equation}
-        \left\| \bm{\Sigma}_{k} - \bm{\Sigma}^{*} \right\|_2 = o\left( \sqrt{\alpha_k^{\text{min}}} \cdot k^{\varepsilon}\right)
-    \end{equation}
-    and
-    \begin{equation}
-        \begin{split}
-             \left\| \bm{\Omega}_{k} - \bm{\Omega}^{*} \right\|_2 = o\left( \sqrt{\alpha_k^{\text{min}}} \cdot k^{\varepsilon}\right),
-        \end{split}
-    \end{equation}
-    for any $\varepsilon > 0$, almost surely. 
-    Then, by Slutsky's theorem, we have
-    \begin{equation}
-        \frac{1}{\sqrt{\alpha_k^{\text{min}}}} \bm{\Omega}_k^{-\frac{1}{2}}\left( \begin{array}{c}
-    \bm{x}_{k+1} - \bm{x}^{*}  \\
-    \bm{\lambda}_{k+1} - \bm{\lambda}^{*} \\
-    \left[ \bm{\mu}_{1,k+1} - \bm{\mu}_{1}^{*}\right]_{\mathcal{I}(\bm{x}^{*})} \\
-    \left[ \bm{\mu}_{2,k+1} - \bm{\mu}_{2}^{*} \right]_{\mathcal{J}(\bm{x}^{*})} 
-    \end{array} \right) \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{I}\right) .
-    \end{equation}
+    Under Assumptions \ref{assump2}, \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>\frac{2}{3}$ if $b_1=1$, and $\frac{1}{2} b_1 < b_2 \leq \frac{2}{3}b_1$, then $\bm{\Sigma}_{k} \to \bm{\Sigma}^{*}$ and $ \bm{\Omega}_{k} \to \bm{\Omega}^{*}$, almost surely.
 \end{theorem}
 
 
@@ -1324,10 +1181,6 @@ The following theorem establishes the almost sure convergence of the practical e
 \label{sec:experiments}
 
 In this section, we describe comprehensive experiments we have conducted to demonstrate the effectiveness of the Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}). 
-\michael{Algorithm 2, not Algorithm 3, has this name.  We need to be more explicit about naming.}
-\yihang{fixed.}
-\michael{Why is that in blue.}
-\yihang{I highlight it in blue, meaning that I revised this part.}
 Specifically, we applied it to a variety of problems, including benchmark optimization problems from CUTEst library \cite{gould2015cutest, fowkes2022pycutest} as well as constrained regression problems. 
 For regression problems, we consider the linear, logistic, and Poisson models.
 Under the classical regression setup, we define $\zeta_k = \left(\zeta_{b_k}, \zeta_{\bm{a}_k} \right)$, where $\zeta_{b_k}$ represents the k-th response and $\zeta_{\bm{a}_k}$ the corresponding observation (attributes).
@@ -1353,10 +1206,8 @@ For each of these models, we can define an objective function corresponding to t
 \end{equation*}
 It is straightforward to verify that  $\bm{x}^{*}$ is the optimal solution of the stochastic objective $f(\bm{x}) = \mathbb{E}\left[ f(\bm{x};\zeta_k) 
  \right]$. Constraints on the model parameters $\bm{x}$ may be incorporated based on prior knowledge or specific problem requirements.
-\michael{Why not put those examples here, that seems like a better use of space in the intro.} \yihang{fixed.}
 We also explore portfolio optimization problems featuring exponential and logarithmic utility functions as the objective. 
 In terms of the hyperparameters, we fix them for all experiments. 
-%, without further pointing out. 
 The step sizes are set as $\gamma_k = 1/(k+1)^{0.751}$ and $\beta_k = 1 / (k+1)^{0.5}$, which satisfy conditions in Theorems~\ref{theorem_lim} and~\ref{theorem_asymptotic_almost_sure}. 
 Quadratic subproblems are solved by the ProxQP solver \cite{bambade2022prox}.\footnote{In our implementation, we import the `qpsolvers' package from \url{https://qpsolvers.github.io/qpsolvers/}.} 
 Implementation details are available as our supplementary code, which can be accessed at \url{https://github.com/yihang-gao/Debiased-StoSQP/tree/main/code}.
@@ -1365,27 +1216,23 @@ Implementation details are available as our supplementary code, which can be acc
 \subsection{CUTEst benchmark problems}
 The CUTEst library collects various types of constrained and unconstrained optimization problems for evaluating the performances of optimization algorithms. 
 We select a subset of the constrained optimization problems (e.g., HS problems) from the library, and we artificially add noise to gradient and Hessian as follows:
-%%\michael{Can we do this better than randomly, maybe choose a few to illustrate things that are challenging for us.}
-%%\yihang{there are many problems in the library and most of them does not fit for our algorithm, e.g., the objective and constraints are not smooth enough. Also, the library is black-box so it is difficult to find the reason we fail. We agree that we should not say ``randomly''.}
+
 
 \begin{itemize}
     \item Gaussian noise: Let $\bm{g}_k = \nabla f(\bm{x}_k, \zeta_k)$ be perturbed such that $\bm{g}_k = \nabla f(\bm{x}_k, \zeta_k) \sim \mathcal{N}(\nabla f(\bm{x}_k), \epsilon (\bm{I} + \bm{e} \bm{e}^{\top}))$. Similarly, the Hessian is given by $\nabla^2 f(\bm{x}_{k}, \zeta_k) \sim \nabla^2 f(\bm{x}_{k}) + \bm{E}$, where $\bm{E}_{i,j} \sim \mathcal{N}(0, \epsilon)$. The noise level $\epsilon$ is chosen from $\{1, 10^{-1}, 10^{-2}, 10^{-4} \}$. 
 
     \item Student's t-distribution noise: 
     Let $\bm{g}_k = \nabla f(\bm{x}_k, \zeta_k)$ be perturbed by noise following a Student's t-distribution, i.e., $\bm{g}_k = \nabla f(\bm{x}_k, \zeta) \sim \nabla f(\bm{x}_k) +  \bm{s}$, where each entry $\bm{s}_{i} \sim \text{t}(m)$. Similarly, the Hessian is perturbed as $\nabla^2 f(\bm{x}_{k}, \zeta) \sim \nabla^2 f(\bm{x}_{k}) + \bm{E}$, where each element $\bm{E}_{i,j} \sim \text{t}(m)$. Here, $\text{t}(m)$ denotes the t-distributional noise, $m$ denotes the degrees of freedom, and $m$ is selected from the set $\{3, 4, 5\}$.
-    %%\michael{Can we set it to 2 or even 1?  2 will start to look different thatn Gaussian.  1 may be too different, but what does it look like. }
-    %%\yihang{actually, I tested m=2, it is quite difficult. The algorithm may not converge and the coverage rate is not close to 95 (some are even like 50\%). We can see that even when m=3, some algorithms even do not converge and some coverage rate is not close to 95. t(2) even does not have finite variance, violating our assumptions. That's why we choose t(3) and higher degree of freedom. }
 \end{itemize}
 We first conduct a comparison between the proposed Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}), ActiveSet-SQP \cite{na2023inequality} and StoSQP \cite{curtis2023sequential}, where we evaluate each method by the KKT residual in Equation \eqref{kkt_condition} and feasibility error. 
 For each algorithm and problem, we run $10^5$ iterations. 
-Our empirical results indicate that the Debiased-StoSQP algorithm consistently outperforms the StoSQP (without debiasing techniques), both of which adopt fully stochastic gradients and Hessian. 
+Our empirical results indicate that the Debiased-StoSQP-v2 algorithm consistently outperforms the StoSQP (without debiasing techniques), both of which adopt fully stochastic gradients and Hessian. 
 This superior performance can be attributed to our algorithm's use of gradient averaging. 
 After a sufficient number of iterations, the averaged gradient approaches the exact gradient, thereby approximating the behavior of deterministic algorithms.
 
-%%\michael{Can we have a plot to show how it approaches the exact gradient, and how that depends on the two averaging parameters, that seems like a nice thing to illustrate.}
+
 In particular, as shown in Figure \ref{fig:avg_grad}, we plot the difference between the averaged gradients and the exact gradients during iterations, and the results validate our expectations and intuitions. The averaged gradients (the solid lines) move closer to the exact gradients, compared with estimated gradients without averaging (the dashed lines).
 In contrast, StoSQP (without debiasing techniques) lacks this beneficial property, and it suffers from oscillations brought by the stochastic gradients. 
-
 The ActiveSet-SQP, which uses a stochastic line search method, necessitates an increasing sample size, and it employs a safeguard technique to ensure the accuracy of the line search. 
 Consequently, it requires a sufficiently large sample size to make the line search practically effective. 
 In contrast, Debiased-StoSQP-v2 requires only a single sample to estimate both the gradient and the Hessian in each iteration.
@@ -1404,53 +1251,39 @@ From the table, we note that the length of the confidence intervals tends to exp
     \begin{figure}[h!]
 \makebox[\linewidth][c]{%
   \centering
-    %\subfloat[] {
-     %\label{syn_relu_g_d:a}     
-    %\resizebox{0.3\textwidth}{!}{\input{fig/syn_relu_numtrain.pgf}}
-    %}\ 
   \subfloat
   [HS32] 
   {
      \label{fig:avg_grad1}     
-    %\resizebox{0.28\textwidth}{!}{\input{fig/syn_relu_g_width.pgf}}
     \includegraphics[width=0.45\textwidth]{Figures/avg_grad_HS32.pdf}
     }\  \hspace{0em}
     \subfloat
     [FCCU] 
     {
     \label{fig:avg_grad2}     
-    %\resizebox{0.28\textwidth}{!}{\input{fig/syn_relu_g_depth.pgf}}
     \includegraphics[width=0.45\textwidth]{Figures/avg_grad_FCCU.pdf}
     }\
     }\\
     \caption{		
 	 Difference between the averaged gradients and the exact gradients on HS32 and FCCU problems. Solid lines: trajectories of gradient difference between the averaged gradients and the exact gradients during iterations, i.e., $\left\| \Bar{\bm{g}}_k -\nabla f(\bm{x}_k)\right\|_2$. Dashed lines: expected error without averaging, i.e., $\mathbb{E}_k \left[\left\| \bm{g}_k -\nabla f(\bm{x}_k)\right\|_2 \right]$.
-\michael{I don't see visually that this is working. Would oyu adjust the figure to make it more clear.  Maybe plot a subset of the iterates, or make the solid line bolder. Also, make the text a bit bigger.}
-\yihang{actually, the empirical convergence is slow. it is difficult to plot a curve that it converges exactly to zero. Comparing dashed line and solid line, we see that the the solid line is much lower than the dashed line, meaning that the error is much smaller.}
 }	
     \label{fig:avg_grad}
 \end{figure} 
 
 
     \begin{figure}[h!]
-\makebox[\linewidth][c]{%
+\makebox[\linewidth][c]{
   \centering
-    %\subfloat[] {
-     %\label{syn_relu_g_d:a}     
-    %\resizebox{0.3\textwidth}{!}{\input{fig/syn_relu_numtrain.pgf}}
-    %}\ 
   \subfloat
   [KKT residuals ] 
   {
      \label{fig:cutest_kkt1}     
-    %\resizebox{0.28\textwidth}{!}{\input{fig/syn_relu_g_width.pgf}}
     \includegraphics[width=0.45\textwidth]{Figures/box_plot_cutest_kkt.pdf}
     }\  \hspace{0em}
     \subfloat
     [Feasibility errors] 
     {
     \label{fig:cutest_kkt2}     
-    %\resizebox{0.28\textwidth}{!}{\input{fig/syn_relu_g_depth.pgf}}
     \includegraphics[width=0.45\textwidth]{Figures/box_plot_cutest_feas.pdf}
     }\
     }\\
@@ -1501,13 +1334,10 @@ From the table, we note that the length of the confidence intervals tends to exp
 \subsection{Constrained regression problems}
 
 Here, we implement Debiased-StoSQP-v2 algorithm (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}) 
-\michael{give it its name also} \yihang{fixed.}
 on constrained regression problems, including both the linear and the logistic regression.
-The response $\zeta_{b_k}$ is generated based on observations $\zeta_{\bm{a}_k} \sim \mathcal{N}\left(\bm{\mu}_{a}, \bm{\Sigma}_{a} \right)$, where the mean vector is set as $\bm{\mu}_a = (1, \cdots, 1, -1, \cdots, -1)$. We explore three different choices of the covariance matrix, as in \cite{chen2020statistical}: (i) Identity matrix, i.e., $\bm{\Sigma}_1 = \bm{I}_d$; (ii) Toeplitz matrix, i.e., $(\bm{\Sigma}_{a})_{i,j} = r^{|i-j|}$ for some $r > 0$; (iii) Equicorrelation matrix, i.e., $(\bm{\Sigma}_{a})_{i,j} = r$ for all $i \neq j$ and $(\bm{\Sigma}_{a})_{i,i} = 1$, for some $r > 0$. The true parameter vector of both two regression models is configured as $\bm{x}^{*} = \left( \frac{3}{2d}, \cdots, \frac{3}{2d}, \frac{1}{2d}, \cdots, \frac{1}{2d}\right)^{\top}$. We consider the non-negativity constraints, denoted by $\Omega := \left\{\bm{x}: \bm{1}^{\top} \bm{x} = 1, \bm{x} \geq \bm{0}\right\}$. In the linear regression problem, the noise $\varepsilon_k$ is sampled from $\varepsilon_k \sim \mathcal{N}(0,1)$. We aim to estimate $\hat{\bm{e}}^{\top} \bm{x}^{*}$, where $\hat{\bm{e}} = \left(1,\cdots, 1, -1, \cdots, -1 \right)^{\top}$, by constructing $95\%$ confidence intervals. 
+The response $\zeta_{b_k}$ is generated based on observations $\zeta_{\bm{a}_k} \sim \mathcal{N}\left(\bm{\mu}_{a}, \bm{\Sigma}_{a} \right)$, where the mean vector is set as $\bm{\mu}_a = (1, \cdots, 1, -1, \cdots, -1)$. We explore three different choices of the covariance matrix, as in \cite{chen2020statistical}: (i) Identity matrix, i.e., $\bm{\Sigma}_1 = \bm{I}_d$; (ii) Toeplitz matrix, i.e., $(\bm{\Sigma}_{a})_{i,j} = r^{|i-j|}$ for some $r > 0$; and (iii) Equicorrelation matrix, i.e., $(\bm{\Sigma}_{a})_{i,j} = r$ for all $i \neq j$ and $(\bm{\Sigma}_{a})_{i,i} = 1$, for some $r > 0$. The true parameter vector of both two regression models is configured as $\bm{x}^{*} = \left( \frac{3}{2d}, \cdots, \frac{3}{2d}, \frac{1}{2d}, \cdots, \frac{1}{2d}\right)^{\top}$. We consider the non-negativity constraints, denoted by $\Omega := \left\{\bm{x}: \bm{1}^{\top} \bm{x} = 1, \bm{x} \geq \bm{0}\right\}$. In the linear regression problem, the noise $\varepsilon_k$ is sampled from $\varepsilon_k \sim \mathcal{N}(0,1)$. We aim to estimate $\hat{\bm{e}}^{\top} \bm{x}^{*}$, where $\hat{\bm{e}} = \left(1,\cdots, 1, -1, \cdots, -1 \right)^{\top}$, by constructing $95\%$ confidence intervals. 
 
 We report the results in Tables \ref{tab:linear_regression} and \ref{tab:logistic_regression}, highlighting different settings for the Toeplitz matrix and Equicorrelation matrix with $r = 0.4, 0.5, 0.6$ and $r=0.1, 0.2, 0.3$, respectively. 
-%%\michael{Does it make sense to put the best numbers in bold, or something like that, in this and other tables, to help guide the reader.}
-%%\yihang{Thank you for the comments. Actually, we do not show comparisons of algorithms in Tables (it is shown in Figure 2). Our result on normality shows the closeness of the covering rate to 95\%. We mainly report the output of our algorithm in Tables, rather than the comparison, so maybe we do not need to bold numbers. We did more explorative experiments on statistical problems.}
 In each experiment, we run $200$ times with varying random seeds to calculate the coverage rate (CovRate) and the average length (AvgLen) of the confidence interval.
 Our results affirm that the constructed $95\%$ confidence intervals closely achieve a $95\%$ coverage rate, thus empirically validating our theoretical conclusions on asymptotic normality.
 Moreover, we also observe that the average length of confidence intervals are in order of $10^{-2}$, matching the experimental results reported by Chen et al. \cite{chen2020statistical} and Na et al. \cite{na2022asymptotic}. The low standard deviation of these intervals' length relative to their average length suggests robustness across different random seeds. 
@@ -1587,7 +1417,7 @@ Moreover, we also observe that the average length of confidence intervals are in
 
 \subsection{Portfolio optimization problems}
 Here, we investigate portfolio optimization problems using $30$ portfolios selected from the Fama-French 100 Portfolios DataSet, subject to the well-known gross-exposure constraint \cite{Fan2012Vast}:
-$\Omega := \left\{\bm{x}: \bm{1}^{\top} \bm{x} = 1, \left\| \bm{x} \right\|_1 \leq c\right\}$,
+$\Omega_{c} := \left\{\bm{x}: \bm{1}^{\top} \bm{x} = 1, \left\| \bm{x} \right\|_1 \leq c\right\}$,
 where we set $c =3$, and where $\bm{x}$ denotes the weights for corresponding stocks. We consider four prevalent portfolio optimization models:
 \begin{itemize}
         \item Global minimum variance (GMV)
@@ -1679,7 +1509,7 @@ This behavior matches well with intuition and underscores the hypothesis that th
     \includegraphics[scale=0.4]{Figures/LOG_2.pdf}
     }\
     \caption{		
-             Weights and returns. \michael{More detailed caption, so that it is self-contained.} Blue lines: the predicted weight for a specific stock in different months. Blue bands: the estimated standard deviation of the weight, evaluated by the derived asymptotic normality results. Yellow lines: the accumulative return of the stock. The predicted stock weights are highly correlated with the stock's price. Abrupt stock price (return) changes are followed by widened blue bands.
+             Weights and returns. Blue lines: the predicted weight for a specific stock in different months. Blue bands: the estimated standard deviation of the weight, evaluated by the derived asymptotic normality results. Yellow lines: the accumulative return of the stock. The predicted stock weights are highly correlated with the stock's price. Abrupt stock price (return) changes shown by the yellow lines are followed by widened blue bands.
             }	
     \label{fig:portfolio}
 \end{figure}
@@ -1772,26 +1602,23 @@ The constrained Poisson regression model is
 
 
 We first consider the unconstrained Poisson regression model in Equation~\eqref{poisson_unconstrained}, including all five attributes, denoted as Model 1. The estimated model coefficients and their confidence intervals and p-values are provided by the `statsmodels' package in Python \cite{seabold2010statsmodels}. Surprisingly, we observe that the coefficient for O3 is significantly negative, which contradicts our prior understanding of the likely impact of air pollution on death rates. To address this issue, we turn to the constrained Poisson model in Equation~\eqref{poisson_constrained}, solved by Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}). 
-\michael{Don't say ``our'' give the name and number} \yihang{fixed.}
 We also estimate confidence intervals and p-values using the derived asymptotic normality. We list the results in Table \ref{tab:chicago1}. Remarkably, under the non-negativity constraints, the weight of O3 is recognized to be active with the constraints, i.e., it is equal to zero. The estimated model coefficients from the constrained Poisson model are more consistent with our prior beliefs. 
 
 Next, we consider a reduced model that excludes the O3 attribute, denoted as Model 2. We find that in this model, the weight for PM10 becomes negative, once again contradicting our prior beliefs.
 Similarly, employing the constrained Poisson model and solving it via Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}), 
-\michael{which one, give name and number} 
 the weight for PM10 becomes positive, although the significance level revealed by the p-value is not particularly strong. The results are reported in Table \ref{tab:chicago2}. 
 These findings highlight the importance of incorporating domain-specific constraints in statistical models. They also emphasize the effectiveness of our approach in addressing such constrained optimization problems.
 
 
 \section{Conclusion}
-In this work, we proposed Debiased-StoSQP-v2, 
-\michael{Which one?}
-a fully stochastic Newton's method for solving constrained optimization problems.
+In this work, we proposed Debiased-StoSQP and its refinement Debiased-StoSQP-v2, 
+fully stochastic Newton's methods for solving constrained optimization problems.
 We include the averaging technique for both the gradient and Hessian, reducing the impact of stochastic noise and improving the algorithm's performance, compared to existing fully stochastic algorithms. 
 We then established the almost sure global convergence in terms of the first-order optimality (KKT) conditions. 
 Furthermore, under certain mild conditions, we developed the asymptotic normality for Debiased-StoSQP-v2 (Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}).
 This is a particularly surprising and novel result since the gradients in Debiased-StoSQP-v2 are highly correlated, in contrast with previous work that primarily relies on the independence of gradients. 
 We also provided a practical plug-in estimator for the covariance matrix. 
-With our results, we are capable of applying Debiased-StoSQP to perform online inference for constrained optimization problems, as we have demonstrated with our empirical results. 
+With our results, we are capable of applying Debiased-StoSQP-v2 to perform online inference for constrained optimization problems, as we have demonstrated with our empirical results. 
 
 
 
@@ -1799,11 +1626,8 @@ While our algorithm Debiased-StoSQP-v2 has demonstrated promising results, there
 Specifically, the current implementation and analysis require the exact solution of quadratic subproblems, which could be computationally expensive. 
 A possible extension of this work would be to explore the use of inexact solutions for the quadratic subproblems, possibly implemented within the RandBLAS/RandLAPACK library \cite{randlapack_book_v2_arxiv}. 
 A recent work by Na and Mahoney \cite{na2022asymptotic} employed sketching techniques to inexactly solve linear systems for equality-constrained subproblems. 
-The asymptotic normality behavior still holds for the StoSQP algorithm 
-\michael{which one}
-with sketching. 
-\yihang{I mean the algorithm in paper [50] holds the asymptotic normality property.}
-It remains an open question whether the global almost sure convergence and the local asymptotic normality properties of Debiased-StoSQP are preserved when fast and inexact solvers are adopted.
+The asymptotic normality behavior still holds for the StoSQP algorithm with sketching. 
+It remains an open question whether the global almost sure convergence and the local asymptotic normality properties of Debiased-StoSQP-v2 are preserved when fast and inexact solvers are adopted.
 Investigating these areas would help in developing a more efficient and versatile algorithm, with broader applicability in constrained optimization scenarios.
 
 
@@ -1918,7 +1742,7 @@ which imply that $\Bar{\bm{z}}_k \in \widetilde{\Omega}_k$ with $\theta_k = \fra
 \end{proof}
 
 
-EGMFCQ and its multiple variants are common in constrained optimization algorithms, i.e., \cite{burke1989robust, xu2015smoothing}. According to the above proposition, EGMFCQ makes the relaxed SQP subproblem feasible. Instead of assuming the EGMFCQ at all iterates $\{\bm{x}_k\}$, which is difficult to verify in real applications, a weaker and more explicit assumption (Assumption \ref{assump1}) is made. Proposition \ref{prop_reason} shows the reasonability of Assumption \ref{assump1}. To verify Assumption \ref{assump1}, as shown in the deterministic SQP (Algorithm \ref{alg_det_relaxed_sqp}), we first validate and adopt a feasible $\widetilde{\Omega}_k$ with proper relaxation parameters $\theta_k$. If $\widetilde{\Omega}_k$ is not feasible for small $\theta_k$ below the predefined tolerance, we have reasons to doubt that $\bm{x}_k$ is close to a point where EGMFCQ does not hold, by Lemma \ref{prop_thetak_to_0}. For completeness, we put the definition of LICQ here.
+EGMFCQ and its multiple variants are common in constrained optimization algorithms, i.e., \cite{burke1989robust, xu2015smoothing}. According to the above proposition, EGMFCQ makes the relaxed SQP subproblem feasible. Instead of assuming the EGMFCQ at all iterates $\{\bm{x}_k\}$, which is difficult to verify in real applications, a weaker and more explicit assumption (Assumption \ref{assump1}) is made. Proposition \ref{prop_reason} shows the reasonability of Assumption \ref{assump1}. To verify Assumption \ref{assump1}, as shown in the deterministic SQP (RelaxedSQP, Algorithm \ref{alg_det_relaxed_sqp}), we first validate and adopt a feasible $\widetilde{\Omega}_k$ with proper relaxation parameters $\theta_k$. If $\widetilde{\Omega}_k$ is not feasible for small $\theta_k$ below the predefined tolerance, then $\bm{x}_k$ is close to a point where EGMFCQ does not hold, by Lemma \ref{prop_thetak_to_0}. For completeness, we put the definition of LICQ here.
 
 \begin{definition}
     [Linear independence constraint qualification (LICQ)]
@@ -2003,7 +1827,6 @@ The proof directly comes from the following lemmas. The first lemma here shows t
 
  \begin{proof}
      We prove it by the definition of the directional derivative. Suppose that $\|\nabla^2 f(\bm{x})\|_2 \leq M$ for some $M>0$. First, 
-     % without the loss of generality, we assume $\alpha \leq 1$, then  
      \begin{equation}
      \label{eq1}
          \begin{split}
@@ -2141,7 +1964,7 @@ Denote $\mathcal{A}^{*} = \mathcal{A}(\bm{x}^{*}):= \{i: (\bm{x}^{*})_i = (\bm{\
 We first show that the adaptivity parameter will stabilize after sufficient iterations.
 \begin{lemma}
 \label{lemma18}
-    Under Assumption \ref{assump3}, there exist a constant $\Bar{\xi} > 0$ such that $\xi_k = \Bar{\xi}$ for all sufficiently large $k$.
+    Under Assumption \ref{assump3}, there exists a constant $\Bar{\xi} > 0$ such that $\xi_k = \Bar{\xi}$ for all sufficiently large $k$.
 \end{lemma}
 
 \begin{proof}
@@ -2179,7 +2002,6 @@ The following lemma is essential in our subsequent analysis and is extended from
     \begin{equation}
         \lim_{k \to \infty} \mathbb{E} \left[ \left\| \Bar{\bm{g}}_k - \nabla f(\bm{x}_k)\right\|_2^2 \right] = 0. 
     \end{equation}
-    % which implies that $\Bar{\bm{g}}_k - \nabla f(\bm{x}_k) \to 0$ as $k \to \infty$, almost surely.
     Therefore, there exists a number $M_{\sigma}>0$ such that 
     \begin{equation*}
         \mathbb{E} \left[ \left\| \Bar{\bm{g}}_k - \nabla f(\bm{x}_k)\right\|_2^2 \right] \leq M_{\sigma}^2,
@@ -2206,7 +2028,7 @@ By the update scheme of $\Bar{\bm{g}}_{k}$, we have
     \begin{equation*}
         \left\|\mathcal{W}_2\right\|_2 \leq \sum_{i=1}^{k} \left( \prod_{j=i}^{k} (1-\beta_j) \right) \alpha_{i-1} M_{\bm{\ell},\bm{u}},
     \end{equation*}
-    we have $\mathcal{W}_2 \to 0$ as $k \to \infty$ since $\lim_{k \to \infty} \alpha_{i-1}/\beta_i = 0$. It follows that $\lim_{k \to \infty} \mathbb{E} \left[ \Bar{\bm{g}}_{k} - \nabla f(\bm{x}_k) \right] = \lim_{k \to \infty} \mathbb{E} \left[ \mathcal{W}_1 \right] = 0$. Since
+    we have $\mathcal{W}_2 \to 0$ as $k \to \infty$ since $\lim_{k \to \infty} \alpha_{i-1}/\beta_i = 0$. It follows that $\lim_{k \to \infty} \mathbb{E} \left[ \Bar{\bm{g}}_{k} - \nabla f(\bm{x}_k) \right] = \lim_{k \to \infty} \mathbb{E} \left[ \mathcal{W}_1 \right] = 0$, since
     \begin{equation*}
         \begin{split}
             & \mathbb{E}\left[ \left\|\mathcal{W}_1\right\|_2^2 \right] \\
@@ -2238,7 +2060,7 @@ The above lemma establishes the convergence of the averaged gradient to the exac
     \begin{equation*}
         \min_{\bm{p} \in \widetilde{\Omega}_k} \frac{1}{2}\left\| \bm{p} + \bm{B}_k^{-1} \Bar{\bm{g}}_{k} \right\|_{\bm{B}_k}^2,
     \end{equation*}
-    which is a convex-constrained quadratic problem. The variational inequalities [references] imply that 
+    which is a convex-constrained quadratic problem. The variational inequality implies that 
     \begin{equation*}
         \left \langle \bm{p}_k - \Bar{\bm{p}}_k, - \bm{B}_k^{-1} \Bar{\bm{g}}_{k} - \Bar{\bm{p}}_k \right \rangle_{\bm{B}_k} \leq 0.
     \end{equation*}
@@ -2397,7 +2219,7 @@ Denote the event $\mathcal{C}_k = \{\nabla f(\bm{x}_k)^{\top} \left( \Bar{\bm{p}
             &  + \frac{1}{2} \left( M_{\sigma} M_{\bm{\ell},\bm{u}} + 2 \left(M_{\nabla f} + M_{\sigma} \right)  M_{\bm{\ell},\bm{u}} + \kappa_1^{-1} \kappa_2 M_{\bm{\ell},\bm{u}} M_{\sigma} \right) \sum_{k=\Bar{K}}^{\Bar{K} + K}  \alpha_k^{\text{max}} \gamma_k.
       \end{split}
     \end{equation} 
-    Since $\sum_{k=0}^{\infty} \gamma_k^2 < \infty$, $\alpha_k^{\text{min}} = \mathcal{O}\left( \gamma_k \right)$ and  $\alpha_k^{\text{max}} = \mathcal{O}\left( \gamma_k + \gamma_k^2 \right)$, we have $\sum_{k=0}^{\infty} \alpha_k^{\text{max}} \gamma_k < \infty$. Note that $\mathbb{E} \left[\sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E}_k \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2| \mathcal{F}_{k-1} \right]\right] = \sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E} \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2\right] < \infty$ shows that $\sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E}_k \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2| \mathcal{F}_{k-1} \right] < \infty$ almost surely. We conclude from Equation \eqref{eq24}, the step size $\alpha_k^{\text{min}} = \mathcal{O}\left( \gamma_k \right)$, the assumption $\sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E}_k \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2| \mathcal{F}_{k-1} \right] < \infty$ and Robbins-Siegmund theorem \cite{robbins1971convergence} that Equation \eqref{eq25} holds. Moreover, since $\sum_{k=0}^{\infty} \gamma_k = \infty$, together with Equation \eqref{eq25}, we obtain Equation \eqref{eq26}.
+    Since $\sum_{k=0}^{\infty} \gamma_k^2 < \infty$, $\alpha_k^{\text{min}} = \mathcal{O}\left( \gamma_k \right)$ and  $\alpha_k^{\text{max}} = \mathcal{O}\left( \gamma_k + \gamma_k^2 \right)$, we have $\sum_{k=0}^{\infty} \alpha_k^{\text{max}} \gamma_k < \infty$. Note that $\mathbb{E} \left[\sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E}_k \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2| \mathcal{F}_{k-1} \right]\right] = \sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E} \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2\right] < \infty$ shows that $\sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E}_k \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2| \mathcal{F}_{k-1} \right] < \infty$. We conclude from Equation \eqref{eq24}, the step size $\alpha_k^{\text{min}} = \mathcal{O}\left( \gamma_k \right)$, the assumption $\sum_{k=\Bar{K}}^{\infty} \alpha_k^{\text{min}} \mathbb{E}_k \left[\left\|\Bar{\bm{p}}_k - \bm{p}_k \right\|_2| \mathcal{F}_{k-1} \right] < \infty$ and Robbins-Siegmund theorem \cite{robbins1971convergence} that Equation \eqref{eq25} holds. Moreover, since $\sum_{k=0}^{\infty} \gamma_k = \infty$, together with Equation \eqref{eq25}, we obtain Equation \eqref{eq26}.
 \end{proof}
 
 
@@ -2642,7 +2464,6 @@ Combining with Lemmas \ref{lemma_lim_kkt} and \ref{lemma_lim_constraints}, we fi
 We proceed by prove each of the four conclusions in turn. 
 
 \subsubsection{Proof for Conclusion 1} 
-% By Theorem \ref{theorem_local_relaxing_parameter}, the unit relaxing parameter $\theta_{k} = 1$ is always accepted when $\bm{x}_{k}$ is sufficiently close to $\bm{x}^{*}$. 
 Note that 
     \begin{equation*}
             \bm{p}_{k} \in \mathop{\arg \min}_{\bm{p} \in \Omega_{k}} \nabla f(\bm{x}_{k})^{\top} \bm{p} + \frac{1}{2} \bm{p}^{\top} \bm{B}_{k} \bm{p},
@@ -2716,11 +2537,7 @@ We revisit the definition of $\Bar{\bm{g}}_k$ and have that
     Here, \begin{equation*}
         \left\|\mathcal{W}_{2,k}\right\|_2 \leq \sum_{i=1}^{k} \left( \prod_{j=i}^{k} (1-\beta_j) \right) \alpha_{i-1} M_{\bm{\ell},\bm{u}},
     \end{equation*}
-    then $\mathcal{W}_2 \to 0$ as $k \to \infty$ since $\lim_{k \to \infty} \alpha_{i-1}/\beta_i = 0$. we apply Corollary 4.7 in \cite{hao2014convergence} with $\gamma = 2$, $p = 4-\varepsilon$ for any sufficiently small $\varepsilon > 0$, and $X_{k,h} = \left( \prod_{h^{\prime}=h+1}^{k} (1-\beta_{h^{\prime}}) \right) \beta_h \sqrt{n} / \sqrt{\beta_k} \left( \bm{g}_h - \nabla f(\bm{x}_{h}) \right)$, as well as the Borel-Cantelli Lemma that the martingale difference array satisfies
-    \begin{equation*}
-        \left\|\mathcal{W}_{1,k}\right\|_2 = o\left( \sqrt{\beta_k} \cdot k^{\varepsilon} \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely.
+    then $\mathcal{W}_{2,k} \to 0$ as $k \to \infty$ since $\lim_{k \to \infty} \alpha_{i-1}/\beta_i = 0$. We apply Theorem 4.4 in \cite{hao2014convergence} with $\gamma = 2$, $\phi(k)=1$, $\alpha=-1/2$, and $X_{k,h} = \left( \prod_{h^{\prime}=h+1}^{k} (1-\beta_{h^{\prime}}) \right) \beta_h / (\sqrt{\beta_k} k^{1/2+\epsilon}) \left( \bm{g}_h - \nabla f(\bm{x}_{h}) \right)$ for any sufficiently small $\varepsilon > 0$, as well as the Borel-Cantelli Lemma that the martingale difference array satisfies $\left\|\mathcal{W}_{1,k} \right\|_2 \to 0$, almost surely.
 
 
     \subsubsection{Proof for Condition 3}
@@ -2789,9 +2606,9 @@ We revisit the definition of $\Bar{\bm{g}}_k$ and have that
     \end{equation}
     Then 
     \begin{equation*}
-        \left\|  \bm{H}_k^{-1} \right\|_2, \left\|  \left(\bm{H}^{*}\right)^{-1} \right\|_2 \leq \Upsilon_{H}
+        \left\|  \bm{H}_k^{-1} \right\|_2, \left\|  \left(\bm{H}^{*}\right)^{-1} \right\|_2 \leq \Upsilon_{H},
     \end{equation*}
-    for some $\Upsilon_{H} > 0$.
+    for some $\Upsilon_{H} > 0$. Moreover, $\bm{H}_k^{-1} \to \left(\bm{H}^{*}\right)^{-1}$ almost surely.
 \end{lemma}
 
 
@@ -2808,14 +2625,14 @@ We revisit the definition of $\Bar{\bm{g}}_k$ and have that
     \begin{equation}
         \left\| \bm{H}_k^{-1} - \left(\bm{H}^{*}\right)^{-1}  \right\|_2 \leq \frac{\left\|\left(\bm{H}^{*}\right)^{-1} \right\|_2 \left\| \bm{H}_k - \bm{H}^{*} \right\|_2}{\lambda_{\min}\left( \bm{H}_{k} \right)} \leq \Upsilon_{L} \left\| \bm{H}_k - \bm{H}^{*} \right\|_2,
     \end{equation}
-    for some $\Upsilon_{L}>0$, since we can assume that $\lambda_{\min}\left( \bm{H}_{k} \right) > \frac{1}{2} \lambda_{\min}\left( \bm{H}^{*} \right)$  without the loss of generality, when $\bm{H}_k$ is sufficiently close to $\bm{H}^{*}$. The boundedness of $\left\|  \bm{H}_k^{-1} \right\|_2$ is a direct result of Equation \eqref{eq27}.  
+    for some $\Upsilon_{L}>0$, since we can assume that $\lambda_{\min}\left( \bm{H}_{k} \right) > \frac{1}{2} \lambda_{\min}\left( \bm{H}^{*} \right)$  without the loss of generality, when $\bm{H}_k$ is sufficiently close to $\bm{H}^{*}$. The boundedness of $\left\|  \bm{H}_k^{-1} \right\|_2$ is a direct result of Equation \eqref{eq27}.  The almost sure convergence of $\bm{H}_k^{-1} \to \left(\bm{H}^{*}\right)^{-1}$ is straightforward from Equation \eqref{eq27} and Lemma \ref{lemma_almostsure_HB}.
 \end{proof}
 
 
 
 \begin{lemma}
 \label{lemma14}
-Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}  generate a sequence $\left\{\left(\bm{x}_k, \bm{\lambda}_{k}, \bm{\mu}_{1,k}, \bm{\mu}_{2,k} \right)\right\}$ satisfying
+Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}  generates a sequence $\left\{\left(\bm{x}_k, \bm{\lambda}_{k}, \bm{\mu}_{1,k}, \bm{\mu}_{2,k} \right)\right\}$ satisfying
     \begin{equation*}
         \left( \begin{array}{c}
     \bm{x}_{k+1} - \bm{x}^{*}  \\
@@ -2973,7 +2790,6 @@ Algorithm \ref{alg_stoch_relaxed_sqp_averaging_grad_Bk}  generate a sequence $\l
 \begin{lemma}
 \label{lemma16}
     Under Assumptions \ref{assump5} and  \ref{assump9}, 
-    % and suppose $\iota_1 > 1$ if $b_1 = 1$, 
     then 
     \begin{equation*}
         \left\|\mathcal{Q}_{2,k} \right\|_2 = o\left( \beta_k \right).
@@ -3013,11 +2829,6 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
     \begin{equation}
         \mathbb{E} \left[\left\| \mathcal{Q}_{1,k}\right\|_2^2 \right] = \mathcal{O} \left( \beta_k \right).
     \end{equation}
-Moreover, 
-\begin{equation}
-        \left\| \mathcal{Q}_{1,k} \right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation}
-    for any sufficiently small $\varepsilon > 0$, almost surely. 
 \end{lemma}
 
 
@@ -3056,16 +2867,6 @@ By the definition of $\Bar{\bm{g}}_{i} - \nabla f(\bm{x}_i)$, we have
         \end{split}
     \end{equation}
     Note that $\mathbb{E}\left[\left\| \mathcal{W}_{1,i} \right\|_2^2 \right] \leq M_{\sigma} \sum_{h=K^{*}}^{i} \prod_{h^{\prime}=h+1}^{i}\left( 1- \beta_{h^{\prime}}\right)^2 \beta_{h}^2 \leq 2 M_{\sigma} \beta_{i}$ and $\left\| \mathcal{W}_{2,i} \right\|_2^2 \leq M_{\bm{\ell},\bm{u}}^2 \left( \sum_{h=K^{*}}^{i} \prod_{h^{\prime}=h+1}^{i}\left( 1- \beta_{h^{\prime}}\right) \alpha_{h}  \right)^2 \leq 2M_{\bm{\ell},\bm{u}}^2 \alpha_i^2 / \beta_i^2 = \mathcal{O}\left( \beta_i\right)$, for $i$ sufficiently large, then $ \mathbb{E} \left[ \left\| \mathcal{Q}_{1,k}\right\|_2^2  \right] = \mathcal{O}\left( \beta_k\right)$. Here, we require that $\iota_1 > b_2$ if $b_1 = 1$, using Lemma \ref{lemma_tool}. 
-
-    For the almost sure convergence, we apply Corollary 4.7 in \cite{hao2014convergence} with $\gamma = 2$, $p = 4-\varepsilon$ for any sufficiently small $\varepsilon > 0$, and $X_{k,h} = \left( \prod_{h^{\prime}=h+1}^{k} (1-\beta_{h^{\prime}}) \right) \beta_h \sqrt{n} / \sqrt{\beta_k} \left( \bm{g}_h - \nabla f(\bm{x}_{h}) \right)$, as well as the Borel-Cantelli Lemma that the martingale difference array satisfies
-    \begin{equation*}
-        \left\|\mathcal{W}_{1,k}\right\|_2 = o\left( \sqrt{\beta_k} \cdot k^{\varepsilon} \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely. Together with the fact that $\left\| \mathcal{W}_{2,k} \right\|_2 \leq M_{\bm{\ell},\bm{u}}  \sum_{h=K^{*}}^{k} \prod_{h^{\prime}=h+1}^{k}\left( 1- \beta_{h^{\prime}}\right) \alpha_{h}  = \mathcal{O}\left( \sqrt{\beta_k} \right)$, it is not difficult to have that 
-    \begin{equation*}
-        \left\| \mathcal{Q}_{1,k} \right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely. 
 \end{proof}
 
 
@@ -3085,22 +2886,7 @@ By the definition of $\Bar{\bm{g}}_{i} - \nabla f(\bm{x}_i)$, we have
     \left[ \bm{\mu}_{1,k} - \bm{\mu}_{1}^{*}\right]_{\mathcal{I}(\bm{x}^{*})} \\
     \left[ \bm{\mu}_{2,k} - \bm{\mu}_{2}^{*} \right]_{\mathcal{J}(\bm{x}^{*})} 
     \end{array} \right)  \right\|_2^2  \right] = \mathcal{O} \left( \beta_k \right).
-    \end{equation*}
-    Moreover, 
-     \begin{equation*}
-        \left\| \mathcal{Q}_{3,k} \right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    and
-    \begin{equation}
-    \label{eq30}
-        \left\|  \left( \begin{array}{c}
-    \bm{x}_{k} - \bm{x}^{*}  \\
-    \bm{\lambda}_{k} - \bm{\lambda}^{*} \\
-    \left[ \bm{\mu}_{1,k} - \bm{\mu}_{1}^{*}\right]_{\mathcal{I}(\bm{x}^{*})} \\
-    \left[ \bm{\mu}_{2,k} - \bm{\mu}_{2}^{*} \right]_{\mathcal{J}(\bm{x}^{*})} 
-    \end{array} \right)  \right\|_2  =  o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation}
-    for any sufficiently small $\varepsilon > 0$, almost surely. 
+    \end{equation*} 
 \end{lemma}
 
 
@@ -3179,13 +2965,7 @@ By the definition of $\Bar{\bm{g}}_{i} - \nabla f(\bm{x}_i)$, we have
             & \hspace{1em} + 2 \left(\sum_{i=K_a+1}^{k} \left(\prod_{j=i+1}^{k} \left( 1 - (1-a)\alpha^{\min}_{j}\right)  \right) a \alpha^{\min}_i \sqrt{\mathbb{E} \left[ \left( \left\| \mathcal{Q}_{1,i-1} \right\|_2 + \left\| \mathcal{Q}_{2,i-1} \right\|_2 \right)^2\right]}\right)^2.
         \end{split}
     \end{equation*}
-    Here, the fact that $\mathbb{E} \left[ \left( \left\| \mathcal{Q}_{1,i} \right\|_2 + \left\| \mathcal{Q}_{2,i} \right\|_2 \right)^2\right] \leq 2 \mathbb{E} \left[  \left\| \mathcal{Q}_{1,i} \right\|_2^2 + \left\| \mathcal{Q}_{2,i} \right\|_2^2\right] = \mathcal{O} \left( \beta_i \right)$ implies $\mathbb{E}\left[ \left\| \mathcal{Q}_{3,k} \right\|_2^2 \right] =  \mathcal{O} \left( \beta_k \right)$. The second relation comes from the fact that $\mathbb{E}\left[ \left\| \mathcal{Q}_{1,k} \right\|_2^2 \right]$, $\mathbb{E}\left[ \left\| \mathcal{Q}_{2,k} \right\|_2^2 \right]$ and $\mathbb{E}\left[ \left\| \mathcal{Q}_{3,k} \right\|_2^2 \right]$ are at least of the order $\mathcal{O}\left( \beta_k \right)$. Here, we require that $\iota_1 > \frac{b_2}{2(1-a)}$ if $b_1 =1$. Since $a \in (0,1)$ can be arbitrarily close to $0$, we know $\frac{b_2}{2(1-a)} \leq b_2 < 1$ if $a \leq \frac{1}{2}$, and thus the condition is automatically satisfied for $a \leq \frac{1}{2}$ and $\iota_1 > 1$.
-
-    Now, we consider the almost sure convergence. We plug the almost sure convergence rate of $\mathcal{Q}_{1,k}$ and $\mathcal{Q}_{2,k}$ into Equation \eqref{eq28}, then the desired almost sure convergence for $\mathcal{Q}_{3,k}$ is obtained, i.e.,
-    \begin{equation*}
-        \left\| \mathcal{Q}_{3,k} \right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely. The almost sure convergence rate for the iterates is straightforward.
+    Here, the fact that $\mathbb{E} \left[ \left( \left\| \mathcal{Q}_{1,i} \right\|_2 + \left\| \mathcal{Q}_{2,i} \right\|_2 \right)^2\right] \leq 2 \mathbb{E} \left[  \left\| \mathcal{Q}_{1,i} \right\|_2^2 + \left\| \mathcal{Q}_{2,i} \right\|_2^2\right] = \mathcal{O} \left( \beta_i \right)$ implies $\mathbb{E}\left[ \left\| \mathcal{Q}_{3,k} \right\|_2^2 \right] =  \mathcal{O} \left( \beta_k \right)$. The second relation comes from the fact that $\mathbb{E}\left[ \left\| \mathcal{Q}_{1,k} \right\|_2^2 \right]$, $\mathbb{E}\left[ \left\| \mathcal{Q}_{2,k} \right\|_2^2 \right]$ and $\mathbb{E}\left[ \left\| \mathcal{Q}_{3,k} \right\|_2^2 \right]$ are at least of the order $\mathcal{O}\left( \beta_k \right)$. Here, we require that $\iota_1 > \frac{b_2}{2(1-a)}$ if $b_1 =1$. Since $a \in (0,1)$ can be arbitrarily close to $0$, we know $\frac{b_2}{2(1-a)} \leq b_2 < 1$ if $a \leq \frac{1}{2}$, and thus the condition is automatically satisfied for $a \leq \frac{1}{2}$ and $\iota_1 > b_2$.
 \end{proof}
 
 
@@ -3200,11 +2980,6 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
      \begin{equation}
         \mathbb{E} \left[ \left\| \bm{H}_k^{-1} - \left(\bm{H}^{*}\right)^{-1}\right\|_2^2 \right] = \mathcal{O} \left( \beta_k \right).
     \end{equation}
-    Moreover, 
-    \begin{equation*}
-        \left\| \bm{H}_k - \bm{H}^{*}\right\|_2,~\left\| \bm{H}_k^{-1} - \left(\bm{H}^{*}\right)^{-1}\right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely.
 \end{lemma}
 
 
@@ -3234,7 +3009,7 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
         \left\| \frac{1}{k+1} \sum_{i=0}^{k} \left( \nabla^2 f(\bm{x}_i;\zeta_i) - \nabla^2 f(\bm{x}_i )\right) \right\|_2 = o\left( \sqrt{\frac{\left( \log k \right)^{1+\nu}}{k}} \right) = \mathcal{O}\left(\sqrt{ \beta_k} \right), ~\text{almost surely},
     \end{equation}
     for any $\nu > 0$.
-    It further shows that $\bm{H}_k$ (resp. $\bm{B}_k$) converges to $\bm{H}^{-1}$ (resp. $\bm{B}^{*}$) almost surely.
+    It further shows that $\bm{H}_k$ (resp. $\bm{B}_k$) converges to $\bm{H}^{*}$ (resp. $\bm{B}^{*}$) almost surely.
     Then
     \begin{equation*}
         \begin{split}
@@ -3253,12 +3028,6 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
     & = \mathcal{O}\left( \beta_k \right).
         \end{split}
     \end{equation*}
-
-    The almost sure convergence in Equations \eqref{eq30} and \eqref{eq31}, together with Equation \eqref{eq32}, imply that 
-    \begin{equation*}
-         \left\| \bm{H}_k - \bm{H}^{*}\right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely.
 \end{proof}
 
 
@@ -3266,10 +3035,6 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
 Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_2$ if $b_1=1$, and $b_2 \leq \frac{2}{3}b_1$, then
     \begin{equation*}
         \mathbb{E} \left[ \left\|\mathcal{W}_{2,k} \right\|_2^2 \right] = \mathcal{O} \left( (\alpha^{\min}_k)^2 / \beta_k \right) = o\left( \alpha^{\min}_k \right),
-    \end{equation*}
-    and
-    \begin{equation*}
-        \left\|\mathcal{W}_{2,k} \right\|_2 = o\left( \alpha^{\min}_k / \sqrt{\beta_k} \cdot k^{\varepsilon}  \right) = o\left(\sqrt{\alpha^{\min}_k} \right),~\text{almost surely}.
     \end{equation*}
 \end{lemma}
 
@@ -3320,8 +3085,6 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
             \mathbb{E} \left[ \left\|\mathcal{W}_{2,k} \right\|_2^2 \right] \leq \left( \sum_{h=K^{*}}^{k} \prod_{h^{\prime}=h+1}^{k} \left( 1- \beta_{h^{\prime}} \right) \alpha_{h-1} \sqrt{\mathbb{E} \left[\left\| \Bar{\bm{p}}_{h-1} \right\|_2^2 \right]} \right)^2 = \mathcal{O} \left(  (\alpha^{\min}_k)^2 / \beta_k \right) = o\left( \alpha^{\min}_k \right).
         \end{split}
     \end{equation*}
-
-    For the almost sure convergence, proof in Lemma \ref{lemma27} shows that $\left\| \Bar{\bm{g}}_k - \nabla f(\bm{x}_{k}) \right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right)$, for any sufficiently small $\varepsilon > 0$, almost surely, then $\left\| \bm{v}_{k} - \bm{v}^{*} \right\|_2 = o\left(\sqrt{\beta_k} \cdot k^{\varepsilon}  \right)$. We slightly modify Equation \eqref{eq33} that $\left\| \Bar{\bm{p}}_{k}\right\|_2 \leq \Upsilon_{H} \left\| \bm{v}_{k} - \bm{v}^{*} \right\|_2 $, we have $\left\|\mathcal{W}_{2,k} \right\|_2 = o\left( \alpha^{\min}_k / \sqrt{\beta_k} \cdot k^{\varepsilon}  \right) = o\left(\sqrt{\alpha^{\min}_k} \right)$ almost surely. 
 \end{proof}
 
 
@@ -3346,16 +3109,6 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
     \begin{equation}
         \mathbb{E} \left[ \left\|\mathcal{Q}_{3,k} \right\|_2 \right] = \mathcal{O} \left( \beta_k \right).
     \end{equation}
-    Moreover, 
-    \begin{equation*}
-        \left\|\mathcal{E}_{1,k}^{*} \right\|_2 = o\left(\beta_k \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    and
-    \begin{equation*}
-        \left\|\mathcal{Q}_{3,k} \right\|_2 = o\left(\beta_k \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    for any sufficiently small $\varepsilon > 0$, almost surely.
-    
 \end{lemma}
 
 \begin{proof}
@@ -3381,7 +3134,7 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
     \begin{equation*}
         \mathbb{E} \left[\left( \left\| \mathcal{Q}_{1,i} \right\|_2 + \left\| \mathcal{Q}_{2,i} \right\|_2 \right)^2\right] = \mathcal{O} \left( \beta_i \right)
     \end{equation*}
-    complete the first part of the proof. The almost sure convergence is straightforward and the corresponding details are similar to the proof for the rate of expectation. 
+    complete the first part of the proof.
 \end{proof}
 
 
@@ -3419,17 +3172,8 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
     then
     \begin{equation}
     \label{eq34}
-        \frac{1}{\sqrt{\alpha_k^{\text{min}}}}\mathcal{Q}_{1,k}^{*} \to \mathcal{N}\left( \bm{0}, \Theta \bm{\Omega}^{*} \right),
+        \frac{1}{\sqrt{\alpha_k^{\text{min}}}}\mathcal{Q}_{1,k}^{*} \to \mathcal{N}\left( \bm{0}, \Theta \bm{\Omega}^{*} \right).
     \end{equation}
-    and
-    \begin{equation}
-    \label{eq35}
-        \left\| \mathcal{Q}_{1,k}^{*}  \right\|_2 = o\left(\sqrt{\alpha}_k \cdot k^{\varepsilon}  \right),
-    \end{equation}
-    for any $\varepsilon > 0$, almost surely.
-    
-    
-    
 \end{lemma}
 
 
@@ -3527,7 +3271,7 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
             \leq & 6 \sum_{i=K^{*}}^{k} \prod_{j=i+1}^{k} (1-\alpha^{\min}_j) \alpha^{\min}_i \cdot \sum_{i^{\prime}=K^{*}}^{i} \prod_{j^{\prime}=i^{\prime}+1}^{k} (1-\alpha^{\min}_{j^{\prime}}) \alpha^{\min}_{i^{\prime}} \cdot \sum_{i^{\prime \prime}=K^{*}}^{i^{\prime}} \prod_{j^{\prime \prime}=i^{\prime \prime}+1}^{k} (1-\alpha^{\min}_{j^{\prime \prime}}) \alpha^{\min}_{i^{\prime \prime}} \\
             & \cdot \sum_{h=K^{*}}^{i^{\prime \prime}} \left( \prod_{h^{\prime}=h+1}^{i} (1-\beta_{h^{\prime}}) \right) \left( \prod_{h^{\prime}=h+1}^{i^{\prime}} (1-\beta_{h^{\prime}}) \right) \left( \prod_{h^{\prime}=h+1}^{i^{\prime \prime}} (1-\beta_{h^{\prime}}) \right) \beta_h^3 \mathbb{E} \left[X_{h}^3 \right] \\
             = & 6 \sum_{i=K^{*}}^{k} \prod_{j=i+1}^{k} (1-\alpha^{\min}_j)^3 \alpha^{\min}_i \cdot \sum_{i^{\prime}=K^{*}}^{i} \prod_{j^{\prime}=i^{\prime}+1}^{i} (1-\alpha^{\min}_{j^{\prime}})^2 (1-\beta_{j^{\prime}}) \alpha^{\min}_{i^{\prime}} \cdot \sum_{i^{\prime \prime}=K^{*}}^{i^{\prime}} \prod_{j^{\prime \prime}=i^{\prime \prime}+1}^{i^{\prime}} (1-\alpha^{\min}_{j^{\prime \prime}}) (1-\beta_{j^{\prime \prime}})^2 \alpha^{\min}_{i^{\prime \prime}} \\
-            & \cdot \sum_{h=K^{*}}^{i^{\prime \prime}}  \left( \prod_{h^{\prime}=h+1}^{i^{\prime \prime}} (1-\beta_{h^{\prime}}) \right)^3 \beta_h^3  \\
+            & \cdot \sum_{h=K^{*}}^{i^{\prime \prime}}  \left( \prod_{h^{\prime}=h+1}^{i^{\prime \prime}} (1-\beta_{h^{\prime}}) \right)^3 \beta_h^3.  \\
         \end{split}
     \end{equation*}
     Similarly, note that 
@@ -3551,23 +3295,10 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
     \begin{equation*}
         \mathbb{E} \left[ \left\| \mathcal{E}_{1,k}^{**} \right\|_2 \right] \leq \Upsilon_{H} \sum_{i=K^{*}}^{k} \prod_{j=i+1}^{k} (1-\alpha^{\min}_j) \alpha^{\min}_i  \sqrt{   \mathbb{E} \left[ \left\| \mathcal{W}_{2,i} \right\|_2^2 \right]} = o\left( \sqrt{\alpha^{\min}_k} \right),
     \end{equation*}
-    where we require that $\iota_1 >b_2$ if $b_1 = 1$. By slutsky's theorem, 
+    where we require that $\iota_1 >b_2$ if $b_1 = 1$. By slutsky's theorem,  
     \begin{equation*}
         \frac{1}{\sqrt{\alpha^{\min}_k}} \mathcal{Q}_{1,k}^{*}  \stackrel{d}{\longrightarrow} \mathcal{N} \left( \bm{0}, \Theta \bm{\Omega}^{*} \right).
     \end{equation*}
-
-
-    For the almost sure convergence, we similarly apply Corollary 4.7 in \cite{hao2014convergence} with $\gamma = 2$, $p = 4-\varepsilon$ for any sufficiently small $\varepsilon > 0$, and $X_{k,h} = a_{h,k} \sqrt{n} / \sqrt{\alpha_k} \left( \bm{g}_h - \nabla f(\bm{x}_{h}) \right)$, as well as the Borel-Cantelli Lemma. Here, we use the fact that $\sum_{h=K^{*}}^{k} a_{h,k}^2 = \mathcal{O}\left( \alpha^{\min}_k \right)$ and $\mathbb{E} \left[ \left\| \bm{g}_h - \nabla f(\bm{x}_{h})  \right\|_2^2 | \mathcal{F}_{h-1}  \right] \leq \sigma_{g}^2$ to construct $X_{k,h}$ in \cite{hao2014convergence}. Therefore, we conclude that 
-    \begin{equation*}
-        \left\| \mathcal{Q}_{1,k}^{**} \right\|_2 = o\left( \sqrt{\alpha^{\min}_k} \cdot k^{\varepsilon}  \right),
-    \end{equation*}
-    for any $\varepsilon > 0$. By Lemma \ref{lemma28}, 
-    \begin{equation*}
-        \left\| \mathcal{E}_{1,k}^{**} \right\|_2 = o\left( \beta_k \cdot k^{\varepsilon} \right) = o\left( \sqrt{\alpha^{\min}_k} \cdot k^{\varepsilon} \right).
-    \end{equation*}
-    Then, we complete the proof for Equation \eqref{eq35}.
-    
-    
     \end{proof}
 
 
@@ -3575,8 +3306,7 @@ Under Assumptions \ref{assump5} and  \ref{assump9}, and suppose that $\iota_1>b_
 
 \subsection{Proof for Theorem \ref{theorem_pratical_normality}}
 \label{sec:appendix3.4}
-The second relation is implied by the first one because the proof in Lemma \ref{lemma29} and the almost sure rates of iterates in Theorem \ref{theorem_asymptotic_almost_sure} jointly show that $\left\|\bm{H}_k^{-1} - \left(\bm{H}^{*}\right)^{-1} \right\|_2 = o\left(\sqrt{\alpha^{\min}_k} \cdot k^{\varepsilon} \right)$,
-    for any $\varepsilon > 0$ almost surely. We are left to show the first relation. Note that
+The second relation is implied by the first one because the proof in Lemma \ref{lemma29} and the almost sure convergence of primal-dual iterates jointly show that $\left\|\bm{H}_k^{-1} - \left(\bm{H}^{*}\right)^{-1} \right\|_2 \to 0$, almost surely. We are left to show the first relation. Note that
     \begin{equation*}
         \begin{split}
              \left\| \bm{\Sigma}_{k} - \bm{\Sigma}^{*} \right\|_2 & = \left\|  \frac{1}{k+1}\sum_{i=0}^{k} \bm{g}_i  \bm{g}_i^{\top} - \mathbb{E} \left[ \nabla f(\bm{x}^{*};\zeta)   \nabla f(\bm{x}^{*};\zeta)^{\top} \right]\right\|_2 \\
@@ -3595,11 +3325,11 @@ The second relation is implied by the first one because the proof in Lemma \ref{
     \begin{equation*}
          \left\|  \frac{1}{k+1}\sum_{i=0}^{k} \bm{g}_i  \bm{g}_i^{\top} - \mathbb{E} \left[ \nabla f(\bm{x}_{i};\zeta)   \nabla f(\bm{x}_{i};\zeta)^{\top} | \mathcal{F}_{i-1}\right]\right\|_2 = o\left( \sqrt{\frac{\left( \log k \right)^{1+\nu}}{k}} \right),
     \end{equation*}
-    for any $\nu >0$, almost surely. The almost sure convergence rate for iterates implies that 
+    for any $\nu >0$, almost surely. The almost sure convergence of iterates (i.e., $\bm{x}_k \to \bm{x}^{*}$) implies that 
     \begin{equation*}
-        \left\|  \frac{1}{k+1}\sum_{i=0}^{k}   \mathbb{E} \left[ \nabla f(\bm{x}_{i};\zeta)   \nabla f(\bm{x}_{i};\zeta)^{\top} - \nabla f(\bm{x}^{*};\zeta)   \nabla f(\bm{x}^{*};\zeta)^{\top} | \mathcal{F}_{i-1} \right]\right\|_2 = o\left( \sqrt{\alpha^{\min}_k} \cdot k^{\varepsilon} \right),
+        \left\|  \frac{1}{k+1}\sum_{i=0}^{k}   \mathbb{E} \left[ \nabla f(\bm{x}_{i};\zeta)   \nabla f(\bm{x}_{i};\zeta)^{\top} - \nabla f(\bm{x}^{*};\zeta)   \nabla f(\bm{x}^{*};\zeta)^{\top} | \mathcal{F}_{i-1} \right]\right\|_2 \to 0,
     \end{equation*}
-    for any $\varepsilon >0$ almost surely. Similarly, for the second term
+   almost surely. Similarly, for the second term
     \begin{equation*}
         \left\|\frac{1}{k+1}\sum_{i=0}^{k} \bm{g}_i - \nabla f(\bm{x}^{*}) \right\|_2 \leq   \left\|\frac{1}{k+1}\sum_{i=0}^{k} \left( \bm{g}_i - \nabla f(\bm{x}_{k}) \right) \right\|_2 +  \left\|\frac{1}{k+1}\sum_{i=0}^{k}  \left(\nabla f(\bm{x}_{k})  - \nabla f(\bm{x}^{*})  \right) \right\|_2,
     \end{equation*}
@@ -3610,9 +3340,9 @@ The second relation is implied by the first one because the proof in Lemma \ref{
     for any $\nu > 0$ almost surely, 
     and
     \begin{equation*}
-        \left\|\frac{1}{k+1}\sum_{i=0}^{k}  \left(\nabla f(\bm{x}_{k})  - \nabla f(\bm{x}^{*})  \right) \right\|_2 = o\left( \sqrt{\alpha^{\min}_k} \cdot k^{\varepsilon} \right),
+        \left\|\frac{1}{k+1}\sum_{i=0}^{k}  \left(\nabla f(\bm{x}_{k})  - \nabla f(\bm{x}^{*})  \right) \right\|_2 \to 0,
     \end{equation*}
-    for any $\varepsilon >0$ almost surely. Therefore, we complete the proof. 
+    almost surely. Therefore, we complete the proof. 
 
     
 \end{appendix}
